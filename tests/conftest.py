@@ -1,7 +1,10 @@
 import pandas as pd
 import pytest
 
-from batter_up.data.pitches import KEEP
+from batter_up.data.pitches import KEEP, build
+from batter_up.data.synthetic import synth_season
+from batter_up.features import build_features, split_by_season
+from batter_up.model.lgbm import PitchModel
 
 
 def pitch(**overrides):
@@ -46,3 +49,21 @@ def raw_frame():
         return pd.DataFrame(list(rows))
 
     return make
+
+
+@pytest.fixture(scope="session")
+def league(tmp_path_factory):
+    """three short seasons of the made up league, run through cleaning and features."""
+    raw = tmp_path_factory.mktemp("raw")
+    interim = tmp_path_factory.mktemp("interim")
+    quiet = lambda *_: None  # noqa: E731
+    for year in (2024, 2025, 2026):
+        synth_season(year, raw, games=15, log=quiet)
+    seasons = build(raw, interim, [2024, 2025, 2026], log=quiet)
+    return build_features(pd.concat([pd.read_parquet(p) for p in seasons], ignore_index=True))
+
+
+@pytest.fixture(scope="session")
+def league_model(league):
+    train, _ = split_by_season(league, 2026)
+    return PitchModel.fit(train, rounds=(20, 20))
