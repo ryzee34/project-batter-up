@@ -1,0 +1,536 @@
+{
+ "version": 1,
+ "model": "claude code session",
+ "atBats": {
+  "823972-51": {
+   "pitches": [
+    "bases loaded, two out, down a run, and wrobleski opens with a slider at the knees for a called strike. the model was sitting fastball.",
+    "a slower sweeper this time, 82 and change, low over the plate. hoskins gets a piece of it and it's 0-2.",
+    "now the heat, 96.6 off the plate. with two strikes he can afford to miss, and he does. 1-2.",
+    "another fastball that misses. two straight heaters out of the zone and it's 2-2.",
+    "back to the sweeper, but it's well off the plate and hoskins lays off. full count with the bases loaded.",
+    "full count, he goes slider and it's outside. ball four, and that forces in a run."
+   ],
+   "wrap": "wrobleski got to 0-2 with two sharp breaking balls, then missed with four straight. the bases-loaded walk scores austin hedges and cleveland leads 2-0."
+  },
+  "823970-52": {
+   "pitches": [
+    "klein starts with 96 at the letters and martínez just ticks it back. the model called fastball and got it.",
+    "the curveball after the high heat is a classic change of eye level, but it misses. 1-1.",
+    "a second straight curveball, and a second straight miss. martínez isn't chasing it. 2-1.",
+    "a sweeper, which the model gave all of 3 percent. it misses too, and klein is behind 3-1.",
+    "gutsy. a 3-1 sweeper, and it drops in at the knees for a called strike. full count.",
+    "sweeper again at 3-2. this one's up in the zone and martínez fouls it back.",
+    "a fourth straight sweeper, still around the plate, still being fouled off. klein trusts it with the count full.",
+    "finally the fastball, 98.2, the hardest pitch of the at-bat, but it misses. ball four."
+   ],
+   "wrap": "klein fell behind with three straight breaking balls out of the zone, battled back to full, then missed with 98 on the eighth pitch. martínez walks and two are aboard."
+  },
+  "822831-14": {
+   "pitches": [
+    "yamamoto opens with the splitter, his second pitch by usage, and lukes takes it for ball one.",
+    "lukes chases a 95.6 mph fastball out of the zone. the model leaned splitter there, giving the heater 31 percent.",
+    "splitter in the dirt, blocked. the model called this one. 2-1.",
+    "another splitter at 92 and lukes spoils it. that's three splitters in four pitches. 2-2.",
+    "a cutter, the first of the at-bat, and the model gave it just 10 percent. lukes stays alive with a foul.",
+    "up comes the fastball, 94.9, and lukes fouls that off too. he has an answer for everything so far.",
+    "the splitter misses and we go full. the model called it, at 42 percent.",
+    "full count, and yamamoto goes cutter up the middle. lukes takes it, and it's called strike three."
+   ],
+   "wrap": "yamamoto showed lukes six splitters and fastballs, then froze him with a 3-2 cutter he'd thrown only once. inning over, runner stranded at second."
+  },
+  "823966-79": {
+   "pitches": [
+    "klein opens with a sweeper up in the zone and jung fouls it. the model was looking fastball.",
+    "now 97.2 at belt height and jung takes it. 0-2.",
+    "back to the sweeper with two strikes, and jung gets just enough to stay alive.",
+    "fastball up, fouled back. jung is hanging in against both pitches.",
+    "a third pitch type, the curveball, but it misses. 1-2.",
+    "another curveball out of the zone. jung isn't biting, and it's 2-2.",
+    "97.7, but it misses too, and a count that was 0-2 is now full. the model had fastball at 63 percent.",
+    "a full-count sweeper off the plate, and jung protects with a foul.",
+    "same pitch, same neighborhood, and this time jung swings through it. strike three."
+   ],
+   "wrap": "klein had jung 0-2, lost him to full with three straight misses, then won it with back-to-back sweepers off the plate. jung went down chasing."
+  },
+  "823965-54": {
+   "pitches": [
+    "treinen, on his first pitch of the outing in a tie game, starts with the sweeper. it's called a strike, though it tracks just off the plate.",
+    "now the sinker at 96.6, the hard pitch that runs the other way, but it misses. 1-1.",
+    "robert chases a sweeper out of the zone. the model had slider at 54 percent there. 1-2.",
+    "the model is even surer now, 68 percent, and it's right, but robert takes this sweeper. 2-2.",
+    "a sweeper over the plate this time and robert fouls it off.",
+    "a fifth sweeper of the at-bat and it misses. full count, two out, runners at the corners.",
+    "and another sweeper, low and on the edge. robert takes, and it's called strike three."
+   ],
+   "wrap": "six sweepers in seven pitches. robert challenged the last one, the call stood, and treinen strands two runners in a tie game."
+  },
+  "823963-19": {
+   "pitches": [
+    "ohtani opens with a 76.7 mph curveball, a pitch he's thrown only 6 percent of the time. lindor fouls it.",
+    "then the splitter, and lindor chases. two pitches, both ones he rarely throws, and it's 0-2.",
+    "another splitter, this one in the dirt and blocked. 1-2.",
+    "now the fastball, 99.3, but it misses. lindor has seen three very different speeds already.",
+    "98 right down the middle, and lindor can only foul it back.",
+    "splitter, and lindor stays alive again.",
+    "fastball up, fouled off. three straight pitches at 2-2, three straight fouls.",
+    "the curveball again, but it misses. full count.",
+    "a 3-2 splitter, which the model gave just 5 percent. lindor fouls it.",
+    "his most-used pitch, the slider, shows up for the first time on pitch ten. fouled away.",
+    "99.6, the hardest pitch of the at-bat, and lindor can only tip it into the mitt. strike three."
+   ],
+   "wrap": "eleven pitches, four pitch types, and lindor fouled off six of them before ohtani finished it with 99.6 that he could only tip into the glove."
+  },
+  "823956-60": {
+   "pitches": [
+    "treinen starts with a four-seamer, a pitch he's used 11 percent of the time, and steals strike one. the model had it at 12 percent.",
+    "a cutter that misses. 1-1.",
+    "the same cutter, up this time, and caissie fouls it off. 1-2.",
+    "a four-seamer up, another foul. the model keeps waiting on the slider.",
+    "there it is, the sweeper, the pitch he throws most. caissie lays off. 2-2.",
+    "back to the cutter up, fouled away.",
+    "a sinker, the fourth different pitch of the at-bat. it misses and we're full.",
+    "a full-count four-seamer, which the model gave 9 percent. caissie fouls it.",
+    "and the sweeper off the plate. caissie chases, strike three."
+   ],
+   "wrap": "treinen mixed four pitches, leaning on his least-used ones to set it up, then got caissie to chase the sweeper. connor norby stole third on the play."
+  },
+  "823066-8": {
+   "pitches": [
+    "sheehan opens with a changeup for a called strike. it's his third pitch by usage, and the model didn't see it coming.",
+    "a second changeup, and gorman takes it again. 0-2, two pitches, no swings.",
+    "now the fastball, 95.2, but it misses. with two strikes there's room to waste one.",
+    "another fastball out of the zone. 2-2, and gorman still hasn't swung.",
+    "slider in the dirt, blocked. three straight misses and the count is full.",
+    "another slider, and this one is up in the zone. gorman fouls it, his first swing.",
+    "full-count fastball, 92.9, out of the zone, and gorman puts it in play."
+   ],
+   "wrap": "sheehan got ahead 0-2 with changeups, then couldn't put gorman away. the 3-2 fastball was off the plate and gorman hit it out to right anyway."
+  },
+  "823957-46": {
+   "pitches": [
+    "kyle hurt is basically two pitches, fastball and changeup, and he starts with 96.1 at the knees. fouled back.",
+    "another fastball, a bit off. 1-1.",
+    "the changeup, and the model called it. yastrzemski fouls it off.",
+    "97.5 out of the zone. 2-2.",
+    "a fastball down the middle and yastrzemski just gets a piece.",
+    "changeup at the knees, fouled. the model has called changeup on every pitch so far.",
+    "fastball misses, full count, two out, runners at the corners.",
+    "96.8, fouled off. yastrzemski keeps matching the heater.",
+    "the model finally flips to fastball, and so does hurt. yastrzemski swings through it, strike three."
+   ],
+   "wrap": "hurt threw yastrzemski seven fastballs and two changeups and won with the heat. a 3-2 fastball out of the zone got the swing and miss, stranding two."
+  },
+  "823957-61": {
+   "pitches": [
+    "brock stewart starts riley with a fastball that misses. ball one.",
+    "a sweeper over the plate, and riley fouls it off. 1-1.",
+    "the fastball misses again. 2-1.",
+    "a sinker now, his fourth pitch by usage, and riley fouls it. 2-2.",
+    "sweeper off the plate, riley takes. full count with two on.",
+    "3-2 and stewart goes fastball at the top of the zone. riley swings through it. strike three."
+   ],
+   "wrap": "stewart fell behind twice but never gave in. with the count full he challenged riley with 95.9 at the top of the zone and got the swing and miss."
+  },
+  "823953-59": {
+   "pitches": [
+    "bases loaded, tie game, and vesia steals strike one with a slider. the model had it at 52 percent.",
+    "the fastball misses. 1-1.",
+    "slider off the plate, and devers doesn't bite. 2-1.",
+    "another fastball misses. 3-1 with the bases loaded.",
+    "the model was 79 percent sure of a 3-1 fastball, and it was right. devers swings through it. full count.",
+    "another fastball, off the plate, fouled away.",
+    "and the fastball misses. ball four, and a run is forced in."
+   ],
+   "wrap": "vesia was ahead early but missed with four of his last six. the bases-loaded walk scores jung hoo lee and san francisco takes a 4-3 lead."
+  },
+  "823299-7": {
+   "pitches": [
+    "ohtani opens with an 80 mph sweeper up in the zone, and andujar takes it for strike one.",
+    "a firmer sweeper at 85.2, off the plate. 1-1. same pitch, five mph apart.",
+    "now 96.6 at the knees and andujar tips it. 1-2. the model was still on the slider.",
+    "sweeper away, fouled off.",
+    "98.2, but it misses. 2-2.",
+    "another fastball out of the zone, and a 1-2 count has gone full.",
+    "full-count sweeper, fouled.",
+    "98 and fouled again. andujar is not going away.",
+    "98.8, the hardest yet, still fouled off.",
+    "another fastball up, another foul. ten pitches deep.",
+    "and the sweeper off the plate. andujar finally chases and misses. strike three."
+   ],
+   "wrap": "andujar fouled off four straight at 3-2, including three fastballs near 98. ohtani dropped to 87 on the sweeper and got the chase."
+  },
+  "823788-14": {
+   "pitches": [
+    "down four in the first with the bases loaded, wrobleski starts chourio with a 72.8 mph curveball. fouled.",
+    "then 93.5 out of the zone and chourio chases. a 20 mph gap between pitches. 0-2.",
+    "fastball out of the zone, fouled.",
+    "another one, fouled again.",
+    "a 69.7 mph curveball, his slowest yet, and it misses. 1-2.",
+    "fastball out of the zone. 2-2.",
+    "the slider, his third pitch, low, and chourio fouls it.",
+    "fastball up, fouled. eight pitches.",
+    "fastball misses and it's full. bases loaded, two out.",
+    "fastball out of the zone, chourio chases. strike three, and the bases stay loaded."
+   ],
+   "wrap": "wrobleski used two curveballs under 73 mph to make the fastball look faster, and chourio chased two fastballs out of the zone, including the last. three runners stranded."
+  },
+  "823787-10": {
+   "pitches": [
+    "sasaki starts with a splitter at 994 rpm, barely spinning, and bauers takes it.",
+    "a second splitter misses. 2-0.",
+    "the fastball, and it's called a ball up. 3-0.",
+    "3-0, the model said fastball at 94 percent and it was right. bauers takes it. 3-1.",
+    "another fastball and bauers swings through it. full count after starting 3-0.",
+    "97.1, fouled. sasaki is all fastball now.",
+    "a slider, the first of the at-bat. the model gave it 8 percent. fouled.",
+    "fastball, low, fouled again.",
+    "another slider, low, and bauers swings through it. strike three."
+   ],
+   "wrap": "sasaki fell behind 3-0, then never threw another ball. four fastballs and two sliders, and the last slider, which the model gave 13 percent, got the swing and miss."
+  },
+  "823941-14": {
+   "pitches": [
+    "edgardo henriquez's first pitch of the day is a 99.6 mph sinker at the knees. strike one, and the model called it.",
+    "101.2 on the sinker. neto gets a piece of it. 0-2.",
+    "slider in the dirt, blocked. the model called that too.",
+    "a four-seamer at 101.4 right down the middle, and neto fouls it. the model had slider.",
+    "slider misses. 2-2.",
+    "101.7, fouled away.",
+    "slider off the plate. full count.",
+    "101.8, the hardest pitch yet, on the corner at the knees. neto swings through it. strike three."
+   ],
+   "wrap": "henriquez threw five pitches at 99.6 or harder and finished neto with 101.8. the sliders missed, but the sinker didn't need help."
+  },
+  "823938-55": {
+   "pitches": [
+    "hurt opens with the changeup at the knees for strike one.",
+    "a slider, a pitch he's thrown 6 percent of the time. it misses. the model gave it 11 percent.",
+    "another slider out of the zone. 2-1.",
+    "fastball in the dirt, blocked. 3-1.",
+    "3-1 changeup, and caminero fouls it. full count.",
+    "98.1 up, fouled.",
+    "98.4 at the top of the zone, and caminero tips it into the mitt. strike three."
+   ],
+   "wrap": "behind 3-1 in a tie game, hurt got a foul on the changeup, then went to two fastballs at 98-plus up in the zone. caminero tipped the last one into the glove."
+  },
+  "823940-79": {
+   "pitches": [
+    "one-run lead, bases loaded, two out in the ninth. vesia starts with a slider that misses.",
+    "fastball out of the zone and mullins chases. 1-1.",
+    "another fastball off the plate, and mullins takes. 2-1.",
+    "a slider in the zone and mullins swings through it. 2-2.",
+    "fastball misses. full count, bases loaded, ninth inning, one-run game.",
+    "full-count slider, low, and mullins swings through it. strike three, game over."
+   ],
+   "wrap": "vesia went to the slider with everything on the line and mullins swung through it. three runners stranded and the dodgers hold on, 5-4."
+  },
+  "823281-68": {
+   "pitches": [
+    "tanner scott's slider is 89.8 mph and it steals strike one. he's thrown it almost half the time.",
+    "98.9 out of the zone. 1-1.",
+    "slider misses. 2-1.",
+    "another slider off the plate. 3-1, nobody out, two on.",
+    "a 3-1 slider, while the model said fastball, and it's right down the middle for a called strike. full count.",
+    "slider out of the zone and bogaerts chases. strike three."
+   ],
+   "wrap": "scott threw five sliders in six pitches, all around 90, and after falling to 3-1 he got a called strike and a chase. one out, two still aboard."
+  },
+  "823933-69": {
+   "pitches": [
+    "a one-run lead in the ninth, and scott's first pitch is a slider that misses.",
+    "another slider, another miss. 2-0.",
+    "a third straight slider, and this one catches the corner. 2-1. the model keeps calling fastball.",
+    "slider number four misses. 3-1 to the leadoff man.",
+    "five sliders in a row, and the 3-1 one goes right down the middle for a strike. full count.",
+    "finally the fastball, 97.9, just as the model switched to slider. taylor fouls it.",
+    "back to the slider, fouled.",
+    "same pitch, same spot, same result.",
+    "slider out of the zone and taylor swings through it. strike three."
+   ],
+   "wrap": "eight sliders in nine pitches to the leadoff man in a one-run ninth. the model called fastball on all eight of them, and taylor went down swinging at the last."
+  },
+  "823929-70": {
+   "pitches": [
+    "down a run in the ninth, phillips starts with a cutter and moniak chases. the model called it.",
+    "sweeper at the knees, called a ball. 1-1.",
+    "96.8 up, fouled.",
+    "98.2, fouled again. still 1-2.",
+    "sweeper off the plate, the model's call at 53 percent. moniak takes. 2-2.",
+    "a sinker at 98.4, the fourth pitch type of the at-bat, which the model gave 7 percent. fouled.",
+    "a cutter at 95 misses. full count.",
+    "full-count sweeper on the edge, and moniak takes it. strike three."
+   ],
+   "wrap": "phillips used all four of his pitches and, with the count full, went to the sweeper, the one he throws most. moniak took it for strike three."
+  },
+  "823928-30": {
+   "pitches": [
+    "runners at second and third, and sasaki challenges julien with 99.1 down the middle. fouled.",
+    "same pitch, same spot, same speed. 0-2.",
+    "a splitter at 800 rpm, which is almost no spin at all. julien takes it. 1-2.",
+    "99.3, but out of the zone. 2-2.",
+    "splitter in the dirt, blocked, with a runner on third. full count.",
+    "another splitter, low, and julien fouls it.",
+    "100.1 down the middle, and julien fouls it back.",
+    "a slider, the first of the at-bat, and julien takes it at the knees. strike three. the model gave it 10 percent."
+   ],
+   "wrap": "sasaki threw julien fastballs and splitters for seven pitches, then a slider he hadn't seen. julien froze for the second out."
+  },
+  "823599-60": {
+   "pitches": [
+    "klein starts benge with a sweeper right down the middle, and benge takes it. the model gave the slider 11 percent.",
+    "curveball misses. 1-1.",
+    "98 out of the zone. 2-1.",
+    "sweeper off the plate. 3-1, runners at the corners.",
+    "3-1 fastball, the model's call at 65 percent, and benge takes it for a strike. full count.",
+    "another fastball, fouled.",
+    "curveball in the dirt and benge swings over it. strike three, and the ball is blocked."
+   ],
+   "wrap": "klein fell behind 3-1, came back with two fastballs, then buried a full-count curveball that benge chased."
+  },
+  "823923-29": {
+   "pitches": [
+    "wrobleski starts with a fastball low, called a ball.",
+    "another fastball misses. 2-0.",
+    "a 2-0 slider at the knees, and refsnyder takes it. 2-1.",
+    "a changeup, which the model gave 6 percent, and refsnyder takes it for strike two.",
+    "95, the hardest of the at-bat so far, fouled off.",
+    "95.2, fouled again.",
+    "another changeup, out of the zone this time. full count.",
+    "full-count fastball, a bit off the plate, and refsnyder puts it in play."
+   ],
+   "wrap": "wrobleski worked back from 2-0 with a slider and a changeup, but refsnyder got the 3-2 fastball and hit it out to left, a two-run homer."
+  },
+  "823924-5": {
+   "pitches": [
+    "lauer opens with a 77.9 mph curveball that misses.",
+    "then 93.8 up, and raleigh swings through it. 1-1.",
+    "a cutter off the plate. 2-1.",
+    "a changeup, which the model gave 14 percent, and raleigh chases. 2-2.",
+    "fastball off the plate, fouled.",
+    "fastball misses. full count, two on, two out.",
+    "a slider now, the fifth pitch type of the at-bat. fouled.",
+    "cutter off the plate and raleigh chases. strike three, inning over."
+   ],
+   "wrap": "lauer showed raleigh all five of his pitches and got two chases out of the zone. the last one, a full-count cutter, ends the first."
+  },
+  "825051-66": {
+   "pitches": [
+    "bases loaded, two out, one-run lead, and scott starts arenado with a slider off the plate.",
+    "fastball, fouled. 1-1.",
+    "slider out of the zone, arenado chases. 1-2.",
+    "another slider, fouled.",
+    "slider, fouled again.",
+    "a fourth straight slider and arenado spoils it again.",
+    "the fastball, the model's call at 61 percent, but it misses. 2-2.",
+    "95 right down the middle, and arenado fouls it.",
+    "slider off the plate, fouled. nine pitches.",
+    "slider misses. full count, bases loaded.",
+    "full-count slider, fouled again. eleven pitches.",
+    "slider up, and arenado swings through it. strike three. three stranded."
+   ],
+   "wrap": "twelve pitches, nine sliders, seven fouls. scott never gave in with the bases loaded, and the last slider got the swing and miss to keep the lead at one."
+  },
+  "825049-53": {
+   "pitches": [
+    "vesia starts moreno with 93.1 up in the zone. strike one, and the model called it.",
+    "another fastball, fouled. 0-2.",
+    "a third straight fastball, and this one misses. 1-2.",
+    "a fourth straight fastball, fouled.",
+    "finally a slider, and moreno fouls it.",
+    "back to the fastball, fouled.",
+    "a changeup, his rarest pitch, at the knees. fouled again.",
+    "fastball misses. 2-2.",
+    "slider off the plate, fouled. nine pitches in.",
+    "fastball off the plate, moreno chases. strike three."
+   ],
+   "wrap": "vesia threw moreno seven fastballs and got the chase on the last one. moreno fouled off six pitches, and the game stays scoreless."
+  },
+  "823916-5": {
+   "pitches": [
+    "lauer goes right at marte with 93.1 up, and marte swings through it.",
+    "another fastball, on the edge, called strike two. 0-2.",
+    "fastball misses. 1-2.",
+    "a cutter, which the model gave 10 percent, off the plate. 2-2.",
+    "fastball misses. full count after starting 0-2.",
+    "a cutter in the zone, fouled.",
+    "fastball, fouled again.",
+    "a cutter, called strike three, though it tracks just off the plate. inning over."
+   ],
+   "wrap": "lauer got ahead 0-2, slipped to full, and won it with the cutter. marte took the last one for strike three, a pitch the tracking had just off the plate."
+  },
+  "823915-74": {
+   "pitches": [
+    "down a run, bases loaded, two out in the ninth. vesia misses with the first fastball.",
+    "92.1 down the middle and yelich swings through it. 1-1. the model called it at 69 percent.",
+    "another fastball, fouled. 1-2.",
+    "fastball misses. 2-2.",
+    "a slider, low, fouled off.",
+    "slider misses. full count, bases loaded.",
+    "full-count fastball, a bit off the plate, and yelich puts it in play."
+   ],
+   "wrap": "vesia kept it to fastballs and sliders and got the 3-2 pitch off the plate. yelich grounded it to mookie betts, who threw to freddie freeman to end the inning."
+  },
+  "824318-75": {
+   "pitches": [
+    "tie game in the ninth, and hurt opens with a changeup that misses.",
+    "another changeup, low on the edge, called strike. the model called it.",
+    "97.6 up, fouled. 1-2.",
+    "changeup misses. 2-2.",
+    "another changeup out of the zone. full count.",
+    "98.1, fouled off.",
+    "98 up, fouled again.",
+    "97.9 off the plate, and castro chases. strike three."
+   ],
+   "wrap": "hurt lost the changeup and fell to full, then went fastball three straight times. castro fouled off two and chased the third."
+  },
+  "823911-65": {
+   "pitches": [
+    "hurt starts oneil cruz with 97.8 that misses.",
+    "another fastball misses. 2-0.",
+    "a changeup now, but it misses too. 3-0.",
+    "3-0, model at 84 percent fastball, and that's what it is. called strike.",
+    "a 3-1 changeup, low, and cruz swings over it. full count.",
+    "98.4 up, fouled.",
+    "98.6 at the knees, fouled again.",
+    "98.9, the hardest pitch of the at-bat, but it's down the middle and cruz puts it in play."
+   ],
+   "wrap": "hurt dug out of 3-0 but left the eighth pitch, a 98.9 fastball, over the middle. cruz hit it to center for a two-run homer that tied the game at 4."
+  },
+  "823911-79": {
+   "pitches": [
+    "extra innings, runners at the corners, nobody out. phillips starts with a sweeper that misses.",
+    "96.4 at the knees for a called strike. 1-1.",
+    "sweeper up and gonzales swings through it. 1-2.",
+    "fastball up, fouled.",
+    "a sweeper, the model's call at 64 percent, fouled away.",
+    "96.9, fouled again.",
+    "97.1 up, fouled. four straight two-strike fouls.",
+    "sweeper off the plate, and the model was 72 percent on it. gonzales takes. 2-2.",
+    "97.6 off the plate, and gonzales chases. strike three."
+   ],
+   "wrap": "phillips alternated sweepers and fastballs, and gonzales fouled off four in a row with two strikes. the 97.6 fastball, the hardest of the at-bat, finally got the chase."
+  },
+  "824881-57": {
+   "pitches": [
+    "jack dreyer opens with a 78.1 mph curveball, his least-used pitch, and riley fouls it.",
+    "94.4, fouled off. 0-2.",
+    "fastball misses. 1-2.",
+    "curveball misses. 2-2.",
+    "a slider off the plate, riley takes. full count after 0-2.",
+    "93.2 down the middle, and riley fouls it back.",
+    "same pitch, same place, same foul.",
+    "a 3-2 curveball, which the model gave 7 percent. riley spoils it.",
+    "93.6 up, and riley swings through it. strike three."
+   ],
+   "wrap": "dreyer let a 0-2 count go full, then threw two fastballs down the middle that riley only fouled. a curveball and one more fastball up got the strikeout."
+  },
+  "824881-58": {
+   "pitches": [
+    "dreyer starts sean murphy with a slider and gets a swing and miss.",
+    "another slider, off the plate, and murphy chases. 0-2.",
+    "a third slider, but murphy takes this one. 1-2.",
+    "96.1, fouled.",
+    "fastball up, fouled again.",
+    "slider misses. 2-2.",
+    "slider over the middle, and murphy fouls it.",
+    "a curveball now, which the model gave 12 percent. it misses. full count.",
+    "fastball off the plate. ball four."
+   ],
+   "wrap": "dreyer had murphy 0-2 on two sliders, then missed with three of his last four. a two-out walk in a tie game."
+  },
+  "824878-78": {
+   "pitches": [
+    "tie game, runners at second and third, nobody out. stewart misses with the fastball.",
+    "sweeper at the knees, called strike. 1-1.",
+    "fastball misses. 2-1.",
+    "sweeper off the plate, acuña chases. 2-2.",
+    "97.3, fouled.",
+    "sweeper misses. full count.",
+    "full-count sweeper, off the plate, and acuña fouls it.",
+    "fastball off the plate, and acuña puts it in play."
+   ],
+   "wrap": "stewart worked acuña almost entirely off the plate. the full-count fastball was off it too, but acuña swung and grounded softly to freddie freeman for the first out."
+  },
+  "824878-88": {
+   "pitches": [
+    "tie game, bottom of the ninth, two on, two out. scott misses with a fastball.",
+    "another fastball misses. 2-0.",
+    "and another. 3-0 to kim.",
+    "3-0, the model at 96 percent fastball, and it is. called strike.",
+    "97 up, fouled. full count.",
+    "a sixth straight fastball, fouled.",
+    "a seventh straight fastball, fouled again.",
+    "an eighth straight fastball, down in the zone, and kim puts it in play."
+   ],
+   "wrap": "scott threw eight straight fastballs and never went to the slider. kim lined the eighth to left for a walk-off single that scored lane thomas."
+  },
+  "824230-72": {
+   "pitches": [
+    "tie game, ninth inning, winning run on third. dreyer misses with a fastball.",
+    "a curveball, which the model gave 8 percent, at the knees for a called strike.",
+    "fastball misses. 2-1.",
+    "fastball, fouled. 2-2.",
+    "slider in the dirt, blocked with the winning run on third. big block. full count.",
+    "a full-count curveball, which the model gave 3 percent. lee fouls it.",
+    "fastball at the knees, fouled again.",
+    "slider off the plate. ball four."
+   ],
+   "wrap": "dreyer kept everything low with the winning run on third, and lee took the last slider for ball four. bases loaded, one out."
+  },
+  "823817-51": {
+   "pitches": [
+    "phillips starts ruiz with a sweeper that misses.",
+    "a sinker at 95.9, called a strike just off the plate. 1-1. the model had it at 17 percent.",
+    "another sinker, down the middle, and ruiz takes it. 1-2.",
+    "sweeper at the knees, fouled.",
+    "another sweeper, fouled.",
+    "sweeper misses. 2-2.",
+    "a four-seamer up, called a ball. full count.",
+    "a sinker at the knees, which the model gave 9 percent, and ruiz swings through it. strike three."
+   ],
+   "wrap": "phillips got two called strikes with the sinker, lost the count with sweepers, then went back to the sinker at 3-2. ruiz swung through it and two are stranded."
+  },
+  "824467-15": {
+   "pitches": [
+    "treinen opens with a cutter, which the model gave 3 percent. ball one.",
+    "a sinker at the knees, the model's call, but it's a ball. 2-0.",
+    "a 2-0 cutter, and suárez takes it for a strike.",
+    "95.9 sinker, fouled. 2-2.",
+    "the sweeper, low, fouled.",
+    "a four-seamer down the middle, which the model gave 10 percent. fouled.",
+    "another fastball, fouled again.",
+    "sweeper off the plate, suárez takes. full count.",
+    "a sinker at the knees, and suárez swings through it. strike three."
+   ],
+   "wrap": "treinen used all four pitches on suárez and went back to the sinker at 3-2. it got the swing and miss for the first out of the inning."
+  },
+  "823899-72": {
+   "pitches": [
+    "up six, díaz starts whitcomb with 97 at the knees. strike one.",
+    "97.4 down the middle, and whitcomb swings through it. 0-2.",
+    "another fastball over the middle, fouled.",
+    "slider in the dirt, blocked. the model called it. 1-2.",
+    "slider up, fouled.",
+    "slider misses. 2-2.",
+    "another slider out of the zone. full count.",
+    "a fifth straight slider, at the knees, fouled.",
+    "and the fastball, 97, off the plate. whitcomb chases. strike three."
+   ],
+   "wrap": "díaz went from three fastballs to five sliders and back to the fastball. whitcomb, after a run of sliders, swung through the 97."
+  },
+  "823164-54": {
+   "pitches": [
+    "bobby miller starts turner hill with a 78.6 mph curveball, and it's called a strike.",
+    "a changeup at 90.3, low, and hill swings through it. 0-2.",
+    "97.9, fouled.",
+    "changeup misses. 1-2.",
+    "curveball at the knees, fouled.",
+    "fastball, fouled again.",
+    "changeup, fouled. hill is hanging in.",
+    "curveball in the dirt, hill swings over it. strike three, blocked."
+   ],
+   "wrap": "miller kept hill guessing with three pitches across 20 mph, 78 to 98, and finished him with a curveball in the dirt for the first out."
+  }
+ }
+}
