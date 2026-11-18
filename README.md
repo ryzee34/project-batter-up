@@ -18,6 +18,8 @@ python side, with [uv](https://docs.astral.sh/uv/)
 uv sync
 uv run batter-up fetch      # downloads every regular season pitch since 2023, about 800 requests
 uv run batter-up build      # cleans them into data/interim/pitches_<year>.parquet
+uv run batter-up features   # everything the model knows before each pitch
+uv run batter-up baseline   # how often "his favorite pitch" is right, the number to beat
 uv run pytest
 ```
 
