@@ -1,6 +1,9 @@
 import './style.css'
 
 import { PERFECT, Session, deal, describe, mulberry32, type Guess, type PitchResult } from './game'
+import { shareCard } from './card'
+import { dailyAtBats, dayKey, dayNumber, result, shareText, streak, type Result } from './daily'
+import { loadResults, saveResult } from './store'
 import { PITCHES, PITCH_ORDER, escape, ordinal, pct, zoneLabel } from './labels'
 import type { Replay } from './replay'
 import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
@@ -15,6 +18,8 @@ interface State {
   summary: ModelSummary | null
   booth: Commentary | null
   session: Session | null
+  mode: 'daily' | 'practice'
+  today: string
   phase: Phase
   pick: Partial<Guess>
   last: PitchResult | null
@@ -41,7 +46,14 @@ async function boot(): Promise<void> {
       // claude's lines are optional, the game plays fine without them
       load<Commentary>('commentary.json').catch(() => null),
     ])
-    state = { data, summary, booth, session: null, phase: 'title', pick: {}, last: null }
+    state = {
+      data,
+      summary,
+      booth,
+      session: null,
+      mode: 'daily',
+      today: dayKey(),
+      phase: 'title', pick: {}, last: null }
     render()
   } catch (err) {
     app.innerHTML = `<section class="card"><h1>batter up</h1><p>couldn't load the at-bats (${escape(String(err))})</p></section>`
@@ -100,9 +112,39 @@ function renderTitle(): string {
       <p class="lede">call the next pitch in real ${escape(state.data.team)} at-bats from ${state.data.season}, before it's thrown.</p>
       <p>you get the count, the runners, the score, the scouting report and every pitch so far. pick the pitch type and where it's going. a model trained on every pitch since 2023 calls it at the same time.</p>
       ${beat}
-      <p class="rules">pitch type ${2} · zone ${1} · both ${PERFECT}</p>
-      <button class="primary" data-action="play">play ${AT_BATS_PER_GAME} at-bats</button>
+      <p class="rules">pitch type 2 · zone 1 · both ${PERFECT}</p>
+      ${dailyBox()}
     </section>`
+}
+
+function dailyBox(): string {
+  const results = loadResults()
+  const done = results[state.today]
+  const days = streak(Object.keys(results), state.today)
+  const streakLine = days > 1 ? `<p class="muted">${days} days in a row</p>` : ''
+  if (!done) {
+    return `
+      <button class="primary" data-action="daily">play today's at-bats, #${dayNumber(state.today)}</button>
+      <button class="secondary" data-action="practice">practice on random at-bats</button>
+      ${streakLine}`
+  }
+  return `
+    <div class="today">
+      <p>today's done: <b>${done.you}</b> to the model's <b>${done.model}</b></p>
+      <pre class="grid">${done.grid.join('\n')}</pre>
+      ${shareButtons()}
+      ${streakLine}
+      <p class="muted">new at-bats at midnight in LA</p>
+    </div>
+    <button class="secondary" data-action="practice">practice on random at-bats</button>`
+}
+
+function shareButtons(): string {
+  return `<div class="share">
+    <button class="secondary" data-action="share-text">share</button>
+    <button class="secondary" data-action="share-card">save card</button>
+    <span class="share-note" aria-live="polite"></span>
+  </div>`
 }
 
 function scoreboard(ab: AtBat, p: Pitch): string {
@@ -299,21 +341,29 @@ function renderDone(): string {
         <span class="muted">${escape(ab.result)}</span></li>`,
     )
     .join('')
+  const tag = state.mode === 'daily' ? `<p class="muted">batter up #${dayNumber(state.today)}</p>` : ''
   return `
     <section class="card">
+      ${tag}
       <h1>${won}</h1>
       <p class="final"><b>${t.you}</b> to <b>${t.model}</b> <span class="muted">out of ${t.perfect}</span></p>
       <p class="muted">left square is you, right is the model. 🟩 nailed it · 🟨 half right · ⬜ missed</p>
       <ol class="recap">${rows}</ol>
-      <button class="primary" data-action="play">play again</button>
+      ${state.mode === 'daily' ? shareButtons() : ''}
+      <button class="primary" data-action="home">${state.mode === 'daily' ? 'back' : 'play again'}</button>
     </section>`
 }
 
 // actions
 
-function startGame(): void {
-  const seed = Math.floor(Math.random() * 2 ** 31)
-  state.session = new Session(deal(state.data.atBats, AT_BATS_PER_GAME, mulberry32(seed)))
+function startGame(mode: 'daily' | 'practice'): void {
+  state.mode = mode
+  state.today = dayKey()
+  const atBats =
+    mode === 'daily'
+      ? dailyAtBats(state.data.atBats, state.today, AT_BATS_PER_GAME)
+      : deal(state.data.atBats, AT_BATS_PER_GAME, mulberry32(Math.floor(Math.random() * 2 ** 31)))
+  state.session = new Session(atBats)
   state.phase = 'calling'
   state.pick = {}
   state.last = null
@@ -344,6 +394,7 @@ function next(): void {
   if (state.phase !== 'reveal') return
   if (!state.session!.next()) {
     state.phase = 'done'
+    if (state.mode === 'daily') saveResult(todaysResult())
   } else {
     state.phase = 'calling'
     state.pick = {}
@@ -352,10 +403,50 @@ function next(): void {
   window.scrollTo({ top: 0 })
 }
 
+function todaysResult(): Result {
+  const saved = loadResults()[state.today]
+  if (saved && (!state.session || state.mode !== 'daily')) return saved
+  return result(state.today, state.session!.results)
+}
+
+function note(text: string): void {
+  const el = document.querySelector('.share-note')
+  if (el) el.textContent = text
+}
+
+async function share(kind: 'text' | 'card'): Promise<void> {
+  const r = todaysResult()
+  try {
+    if (kind === 'card') {
+      note((await shareCard(r)) === 'shared' ? '' : 'card saved')
+      return
+    }
+    const text = shareText(r)
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      await navigator.share({ text })
+    } else {
+      await navigator.clipboard.writeText(text)
+      note('copied')
+    }
+  } catch (err) {
+    if ((err as Error).name !== 'AbortError') note("couldn't share, sorry")
+  }
+}
+
+function home(): void {
+  state.phase = 'title'
+  state.session = null
+  render()
+}
+
 app.addEventListener('click', (e) => {
   const target = e.target as HTMLElement
   const action = target.closest<HTMLElement>('[data-action]')?.dataset.action
-  if (action === 'play') return startGame()
+  if (action === 'daily') return startGame('daily')
+  if (action === 'practice') return startGame('practice')
+  if (action === 'home') return home()
+  if (action === 'share-text') return void share('text')
+  if (action === 'share-card') return void share('card')
   if (action === 'call') return lockIn()
   if (action === 'next') return next()
   if (action === 'replay') return replay?.replay()
@@ -373,7 +464,6 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault()
     if (state.phase === 'calling') lockIn()
     else if (state.phase === 'reveal') next()
-    else startGame()
     return
   }
   const pitch = PITCH_ORDER.find((c) => PITCHES[c].key === key)
