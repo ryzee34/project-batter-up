@@ -37,7 +37,7 @@ uv run batter-up features   # everything the model knows before each pitch
 uv run batter-up baseline   # how often "his favorite pitch" is right, the number to beat
 uv run batter-up train      # trains the model on 2023-2025 and scores it on 2026 next to the baseline
 uv run batter-up export     # picks the at-bats and writes them with the model's calls to web/public/data
-uv run batter-up commentary # claude writes a booth line for every pitch, in one batch (needs ANTHROPIC_API_KEY)
+uv run batter-up commentary # writes the prompt for the booth lines, then /booth in claude code writes them
 uv run pytest
 ```
 
@@ -90,9 +90,13 @@ keyboard works too: f s c l u h p for the pitch, 1 to 9 for the zone, 0 for a ch
 
 ## the booth
 
-after each pitch a line of color commentary shows up, written by claude (`claude-opus-5-5`) ahead of time, since a static site can't hold an api key. `src/batter_up/commentary.py` turns each at-bat into plain facts (situation, pitcher's mix, every pitch with its count, speed, spot, result and what the model called) and sends all of them as one message batch, which is half price and fine because nobody is waiting. each reply is held to a json schema with structured outputs, one line per pitch plus a wrap, and checked against the at-bat before it's kept.
+after each pitch a line of color commentary shows up, written by claude ahead of time. the site is static, so players never call claude and playing costs nothing. the lines are written once and shipped as `web/public/data/commentary.json`.
 
-the hard rule in the prompt is that the line for pitch 3 can only use what happened through pitch 3, because you read it before calling pitch 4. it's also told to use only the facts it's given, no made up stats. refusals and bad replies are skipped and the game just plays that at-bat without lines. `--dry-run` prints the exact prompt without calling anything. about 40 at-bats costs well under a dollar.
+the free way, and the default, is a claude code session. `uv run batter-up commentary` turns every at-bat into plain facts (situation, pitcher's mix, every pitch with its count, speed, spot, result and what the model called) and writes them with the rules into one prompt file. then `/booth` in claude code (the skill in `.claude/skills/booth`) reads it, writes the json, and runs `uv run batter-up commentary --check`, which fails if any pitch is missing a line. no api key, it runs on the claude plan.
+
+`--api` does the same thing through the claude api instead, if you have a key: every at-bat goes into one message batch (half price, nobody's waiting), each reply is held to a json schema with structured outputs and checked before it's kept, and refusals or bad replies are skipped. `--dry-run` prints that prompt without calling anything.
+
+either way the hard rule is that the line for pitch 3 can only use what happened through pitch 3, because you read it before calling pitch 4, and that it only uses the facts it's given, no made up stats. at-bats without lines just play without them.
 
 ## deploying
 
