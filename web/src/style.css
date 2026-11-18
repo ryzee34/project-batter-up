@@ -539,3 +539,64 @@ button.primary:disabled {
   display: block;
   letter-spacing: 0.1em;
 }
+
+/* pitch replay */
+
+.replay {
+  position: relative;
+  display: none;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.replay.ready {
+  display: block;
+}
+
+.replay-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+.replay-again {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(10, 21, 32, 0.8);
+  font-size: 0.8rem;
+}
+
+.replay-legend {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.replay-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.replay-legend i.you {
+  background: #fff;
+}
+
+.replay-legend i.model {
+  background: var(--half);
+}
+
+.mini .zone-frame {
+  width: min(100%, 240px);
+}
