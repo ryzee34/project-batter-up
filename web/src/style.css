@@ -600,3 +600,17 @@ button.primary:disabled {
 .mini .zone-frame {
   width: min(100%, 240px);
 }
+
+.booth {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--muted);
+  color: #d7e1ea;
+  font-style: italic;
+}
+
+.booth::before {
+  content: 'booth: ';
+  font-style: normal;
+  color: var(--muted);
+}
