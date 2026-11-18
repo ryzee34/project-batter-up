@@ -32,6 +32,7 @@ jobs:
           uv run batter-up build
           uv run batter-up features
           uv run batter-up train
+          uv run batter-up export
 
   web:
     runs-on: ubuntu-latest
