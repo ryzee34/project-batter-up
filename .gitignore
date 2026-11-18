@@ -19,3 +19,4 @@ web/dist/
 
 # practice data from batter-up synth
 data/synthetic/
+data/booth-prompt.md

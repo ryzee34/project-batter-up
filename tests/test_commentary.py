@@ -123,3 +123,22 @@ def test_refusals_and_errors_are_skipped_not_fatal(payload):
     assert out["atBats"] == {}
     assert batches.sent is None  # picked up an existing batch, sent nothing
     assert any("refusal" in line for line in logged)
+
+
+def test_prompt_document_has_the_rules_the_shape_and_every_at_bat(payload):
+    doc = commentary.prompt_document(payload)
+    assert commentary.SYSTEM in doc
+    assert '"atBats"' in doc
+    assert "### 20260003-54" in doc
+    assert "2. count 0-1" in doc
+
+
+def test_check_finds_missing_short_and_extra_entries(payload):
+    good = {"atBats": {"20260003-54": {"pitches": ["a", "b"], "wrap": "w"}}}
+    assert commentary.check(payload, good) == []
+    short = {"atBats": {"20260003-54": {"pitches": ["a"], "wrap": ""}, "nope": {}}}
+    problems = commentary.check(payload, short)
+    assert "20260003-54: 1 lines for 2 pitches" in problems
+    assert "20260003-54: no wrap" in problems
+    assert "nope: not an at-bat in atbats.json" in problems
+    assert commentary.check(payload, {"atBats": {}}) == ["20260003-54: no lines"]
