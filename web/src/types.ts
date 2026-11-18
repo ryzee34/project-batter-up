@@ -83,3 +83,9 @@ export interface ModelSummary {
   byCount: Record<string, { pitches: number; model: number; baseline: number }>
   importance: [string, number][]
 }
+
+export interface Commentary {
+  version: number
+  model: string
+  atBats: Record<string, { pitches: string[]; wrap: string }>
+}

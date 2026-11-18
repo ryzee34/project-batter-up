@@ -400,7 +400,7 @@ class Game:
                 zone=zone,
                 description=description,
                 events=event,
-                des=self._des(batter, event),
+                des=self._des(batter, event, outcome),
                 **flight(rng, call, pitcher.throws, plate_x, plate_z),
             )
             self.rows.append(row)
@@ -414,9 +414,11 @@ class Game:
                 strikes += 1
 
     @staticmethod
-    def _des(batter: Batter, event: str | None) -> str | None:
+    def _des(batter: Batter, event: str | None, outcome: str) -> str | None:
         if event is None:
             return None
+        if event == "strikeout" and outcome == "called_strike":
+            return f"{batter.name} called out on strikes."
         if event == "strikeout":
             return f"{batter.name} strikes out swinging."
         if event == "walk":
