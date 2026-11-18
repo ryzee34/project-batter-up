@@ -1,34 +1,20 @@
 import numpy as np
-import pandas as pd
 import pytest
 
-from batter_up.data.pitches import PITCH_CALLS, ZONES, build
-from batter_up.data.synthetic import synth_season
-from batter_up.features import build_features, split_by_season
+from batter_up.data.pitches import PITCH_CALLS, ZONES
+from batter_up.features import split_by_season
 from batter_up.model.evaluate import evaluate, lines
 from batter_up.model.lgbm import PitchModel, matrix
 
 
-@pytest.fixture(scope="module")
-def features(tmp_path_factory):
-    raw = tmp_path_factory.mktemp("raw")
-    interim = tmp_path_factory.mktemp("interim")
-    quiet = lambda *_: None  # noqa: E731
-    for year in (2024, 2025, 2026):
-        synth_season(year, raw, games=15, log=quiet)
-    seasons = build(raw, interim, [2024, 2025, 2026], log=quiet)
-    return build_features(pd.concat([pd.read_parquet(p) for p in seasons], ignore_index=True))
+@pytest.fixture
+def features(league):
+    return league
 
 
-@pytest.fixture(scope="module")
-def split(features):
-    return split_by_season(features, 2026)
-
-
-@pytest.fixture(scope="module")
-def model(split):
-    train, _ = split
-    return PitchModel.fit(train, rounds=(20, 20))
+@pytest.fixture
+def split(league):
+    return split_by_season(league, 2026)
 
 
 def test_matrix_keeps_categories_fixed_whatever_the_rows_hold(features):
@@ -36,6 +22,11 @@ def test_matrix_keeps_categories_fixed_whatever_the_rows_hold(features):
     assert list(one["count"].cat.categories) == [f"{b}-{s}" for b in range(4) for s in range(3)]
     assert "pitch_call" not in one
     assert list(matrix(features.head(1), "slider")["pitch_call"]) == ["slider"]
+
+
+@pytest.fixture
+def model(league_model):
+    return league_model
 
 
 def test_probabilities_add_up(model, split):
