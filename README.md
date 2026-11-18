@@ -16,7 +16,8 @@ python side, with [uv](https://docs.astral.sh/uv/)
 
 ```
 uv sync
-uv run batter-up --help
+uv run batter-up fetch      # downloads every regular season pitch since 2023, about 800 requests
+uv run batter-up build      # cleans them into data/interim/pitches_<year>.parquet
 uv run pytest
 ```
 
