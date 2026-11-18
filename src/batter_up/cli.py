@@ -147,6 +147,34 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_commentary(args: argparse.Namespace) -> int:
+    import json
+
+    from batter_up import commentary
+
+    path = paths.WEB_DATA / "atbats.json"
+    if not path.exists():
+        raise SystemExit("no at-bats yet, run batter-up export first")
+    payload = json.loads(path.read_text())
+    if args.dry_run:
+        print(commentary.SYSTEM, "\n")
+        first = commentary.request(payload["atBats"][0], payload["pitchCalls"])
+        print(first["params"]["messages"][0]["content"])
+        return 0
+    if payload.get("synthetic") and not args.allow_synthetic:
+        raise SystemExit(
+            "these at-bats are from the made up league. export the real ones first, "
+            "or pass --allow-synthetic to pay for lines about made up players"
+        )
+    import anthropic
+
+    out = commentary.run(anthropic.Anthropic(), payload, batch_id=args.batch_id)
+    target = paths.WEB_DATA / "commentary.json"
+    target.write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"-> {target.name}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="batter-up", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -188,6 +216,12 @@ def build_parser() -> argparse.ArgumentParser:
     exp.add_argument("--at-bats", type=int, default=40)
     exp.add_argument("--team", default="LAD")
     exp.set_defaults(func=cmd_export)
+
+    talk = sub.add_parser("commentary", help="have claude write booth lines for every pitch")
+    talk.add_argument("--batch-id", help="pick up a batch that was already sent")
+    talk.add_argument("--dry-run", action="store_true", help="print the first prompt and stop")
+    talk.add_argument("--allow-synthetic", action="store_true")
+    talk.set_defaults(func=cmd_commentary)
 
     return parser
 

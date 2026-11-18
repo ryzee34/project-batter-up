@@ -3,7 +3,7 @@ import './style.css'
 import { PERFECT, Session, deal, describe, mulberry32, type Guess, type PitchResult } from './game'
 import { PITCHES, PITCH_ORDER, escape, ordinal, pct, zoneLabel } from './labels'
 import type { Replay } from './replay'
-import type { AtBat, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
+import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
 import { zoneGrid } from './zone'
 
 const AT_BATS_PER_GAME = 3
@@ -13,6 +13,7 @@ type Phase = 'title' | 'calling' | 'reveal' | 'done'
 interface State {
   data: GameData
   summary: ModelSummary | null
+  booth: Commentary | null
   session: Session | null
   phase: Phase
   pick: Partial<Guess>
@@ -34,11 +35,13 @@ async function load<T>(name: string): Promise<T> {
 
 async function boot(): Promise<void> {
   try {
-    const [data, summary] = await Promise.all([
+    const [data, summary, booth] = await Promise.all([
       load<GameData>('atbats.json'),
       load<ModelSummary>('model.json').catch(() => null),
+      // claude's lines are optional, the game plays fine without them
+      load<Commentary>('commentary.json').catch(() => null),
     ])
-    state = { data, summary, session: null, phase: 'title', pick: {}, last: null }
+    state = { data, summary, booth, session: null, phase: 'title', pick: {}, last: null }
     render()
   } catch (err) {
     app.innerHTML = `<section class="card"><h1>batter up</h1><p>couldn't load the at-bats (${escape(String(err))})</p></section>`
@@ -239,9 +242,11 @@ function renderReveal(): string {
   const ab = s.atBat
   const you = { pitch: state.pick.pitch!, zone: state.pick.zone! }
   const model = { pitch: p.model.call[0], zone: p.model.call[1] }
-  const ending = s.atBatDone
-    ? `<p class="ending">${escape(ab.des)}</p>`
-    : ''
+  const lines = state.booth?.atBats[ab.id]
+  const line = lines?.pitches[s.pitchIndex]
+  const booth = line ? `<blockquote class="booth">${escape(line)}</blockquote>` : ''
+  const wrap = s.atBatDone && lines?.wrap ? `<blockquote class="booth">${escape(lines.wrap)}</blockquote>` : ''
+  const ending = s.atBatDone ? `<p class="ending">${escape(ab.des)}</p>${wrap}` : ''
   const nextLabel = s.done ? 'see how you did' : s.atBatDone ? 'next at-bat' : 'next pitch'
   return `
     ${scoreboard(ab, p)}
@@ -252,6 +257,7 @@ function renderReveal(): string {
           <h2>${p.mph} mph ${escape(p.name.toLowerCase())}, ${zoneLabel(p.zone)}</h2>
           <p>${describe(p.result)}${p.spin ? ` · ${p.spin} rpm` : ''}</p>
         </div>
+        ${booth}
         ${verdict('you', you, r.you.points)}
         ${verdict('model', model, r.model.points)}
         <h3>what the model saw coming</h3>
