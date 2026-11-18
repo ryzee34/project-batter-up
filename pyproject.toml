@@ -5,6 +5,7 @@ description = "data pipeline and pitch model for project batter up"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=2.10.0",
     "httpx>=0.28.1",
     "lightgbm>=4.7.0",
     "pandas>=3.1.1",

@@ -22,6 +22,7 @@ uv run batter-up features   # everything the model knows before each pitch
 uv run batter-up baseline   # how often "his favorite pitch" is right, the number to beat
 uv run batter-up train      # trains the model on 2023-2025 and scores it on 2026 next to the baseline
 uv run batter-up export     # picks the at-bats and writes them with the model's calls to web/public/data
+uv run batter-up commentary # claude writes a booth line for every pitch, in one batch (needs ANTHROPIC_API_KEY)
 uv run pytest
 ```
 
@@ -59,6 +60,12 @@ plain typescript, no framework. `web/src/game.ts` is the rules (a session walks 
 after each call the pitch replays in three.js from just behind the catcher, once at real speed and once slowed down with its path drawn. statcast describes every pitch as nine numbers, a velocity and an acceleration at 50 feet from the plate, so the path is just constant acceleration, solved backwards from where the ball crossed the plate (`web/src/flight.ts`, tested against the plate location). three.js only loads after your first call, so the first screen stays small, and the 2d zone still works if webgl doesn't.
 
 keyboard works too: f s c l u h p for the pitch, 1 to 9 for the zone, 0 for a chase, enter to call it.
+
+## the booth
+
+after each pitch a line of color commentary shows up, written by claude (`claude-opus-5-5`) ahead of time, since a static site can't hold an api key. `src/batter_up/commentary.py` turns each at-bat into plain facts (situation, pitcher's mix, every pitch with its count, speed, spot, result and what the model called) and sends all of them as one message batch, which is half price and fine because nobody is waiting. each reply is held to a json schema with structured outputs, one line per pitch plus a wrap, and checked against the at-bat before it's kept.
+
+the hard rule in the prompt is that the line for pitch 3 can only use what happened through pitch 3, because you read it before calling pitch 4. it's also told to use only the facts it's given, no made up stats. refusals and bad replies are skipped and the game just plays that at-bat without lines. `--dry-run` prints the exact prompt without calling anything. about 40 at-bats costs well under a dollar.
 
 ## the data
 
