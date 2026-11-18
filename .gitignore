@@ -16,3 +16,6 @@ web/dist/
 
 .DS_Store
 .env
+
+# practice data from batter-up synth
+data/synthetic/
