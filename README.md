@@ -56,6 +56,8 @@ npm run dev
 
 plain typescript, no framework. `web/src/game.ts` is the rules (a session walks pitch by pitch through a few at-bats, and you and the model are graded the same way: 2 for the pitch type, 1 for the zone, 1 more for both) and is tested with vitest. the page re-renders from one state object on every click. the zone is drawn from the catcher's view, with the box as the strike zone and the frame around it as the chase area, and the actual pitch lands at its real plate_x and plate_z.
 
+after each call the pitch replays in three.js from just behind the catcher, once at real speed and once slowed down with its path drawn. statcast describes every pitch as nine numbers, a velocity and an acceleration at 50 feet from the plate, so the path is just constant acceleration, solved backwards from where the ball crossed the plate (`web/src/flight.ts`, tested against the plate location). three.js only loads after your first call, so the first screen stays small, and the 2d zone still works if webgl doesn't.
+
 keyboard works too: f s c l u h p for the pitch, 1 to 9 for the zone, 0 for a chase, enter to call it.
 
 ## the data

@@ -2,6 +2,7 @@ import './style.css'
 
 import { PERFECT, Session, deal, describe, mulberry32, type Guess, type PitchResult } from './game'
 import { PITCHES, PITCH_ORDER, escape, ordinal, pct, zoneLabel } from './labels'
+import type { Replay } from './replay'
 import type { AtBat, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
 import { zoneGrid } from './zone'
 
@@ -20,6 +21,10 @@ interface State {
 
 const app = document.querySelector<HTMLElement>('#app')!
 let state: State
+// one webgl view for the whole visit, moved into each reveal. three.js only loads when
+// the first pitch is revealed, so the calling screen stays light
+let replay: Replay | null = null
+let replayBroken = false
 
 async function load<T>(name: string): Promise<T> {
   const res = await fetch(`${import.meta.env.BASE_URL}data/${name}`)
@@ -53,6 +58,32 @@ function render(): void {
     done: renderDone,
   }[state.phase]()
   app.innerHTML = banner + body
+  if (state.phase === 'reveal') void mountReplay()
+}
+
+async function mountReplay(): Promise<void> {
+  const host = document.querySelector<HTMLElement>('#replay')
+  const result = state.last
+  if (!host || !result) return
+  if (replayBroken) return host.remove()
+  try {
+    if (!replay) {
+      const { Replay, webglAvailable } = await import('./replay')
+      if (!webglAvailable()) throw new Error('no webgl here')
+      replay = new Replay()
+    }
+    if (!host.isConnected || state.last !== result) return
+    host.prepend(replay.canvas)
+    host.classList.add('ready')
+    replay.play(result.pitch, state.session!.atBat.batter.stands, {
+      you: state.pick.zone,
+      model: result.pitch.model.call[1],
+    })
+  } catch (err) {
+    console.warn('pitch replay is off:', err)
+    replayBroken = true
+    host.remove()
+  }
 }
 
 function renderTitle(): string {
@@ -229,6 +260,11 @@ function renderReveal(): string {
         <button class="primary" data-action="next">${nextLabel}</button>
       </div>
       <div class="right">
+        <div class="replay" id="replay">
+          <button class="replay-again" data-action="replay" aria-label="replay the pitch">↻ replay</button>
+          <span class="replay-legend"><i class="you"></i>you <i class="model"></i>model</span>
+        </div>
+        <div class="mini">
         ${zoneGrid(
           {
             you: you.zone,
@@ -240,6 +276,7 @@ function renderReveal(): string {
           },
           false,
         )}
+        </div>
         <p class="muted hint">shading is where the model thought it was going</p>
       </div>
     </section>`
@@ -315,6 +352,7 @@ app.addEventListener('click', (e) => {
   if (action === 'play') return startGame()
   if (action === 'call') return lockIn()
   if (action === 'next') return next()
+  if (action === 'replay') return replay?.replay()
   const pitch = target.closest<HTMLElement>('[data-pitch]')?.dataset.pitch
   if (pitch) return choosePitch(pitch as PitchCall)
   const zone = target.closest<HTMLElement>('[data-zone]')?.dataset.zone
