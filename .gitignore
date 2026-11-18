@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# data pulls are big and rebuilt by the pipeline
+data/raw/
+data/interim/
+models/
+
+# web
+web/node_modules/
+web/dist/
+
+.DS_Store
+.env
