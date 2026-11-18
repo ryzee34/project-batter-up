@@ -1,13 +1,18 @@
 """booth commentary for every pitch in the game, written by claude ahead of time.
 
-the site is static and has no api key, so the lines are written once, here, and shipped
-as json next to the at-bats. every at-bat is one request in a single message batch (half
-the price of asking one at a time, and nobody is waiting on it). claude sees the whole
-at-bat, so the prompt is strict about one thing: a line about pitch 3 can only use what
-happened through pitch 3, because the game shows it right after pitch 3 is revealed and
-before you call pitch 4.
+the site is static and has no api key, so the lines are written once and shipped as json
+next to the at-bats. players never call claude. there are two ways to write them:
 
-    ANTHROPIC_API_KEY=... uv run batter-up commentary
+- free, the default: `batter-up commentary` writes one prompt file with the rules and
+  every at-bat. a claude code session (the /booth skill in .claude/skills) reads it and
+  writes web/public/data/commentary.json, then `batter-up commentary --check` makes sure
+  every pitch has a line. this runs on a claude plan, no api key.
+- with an api key: `batter-up commentary --api` sends every at-bat as one request in a
+  single message batch and collects the replies, held to a json schema.
+
+either way claude sees the whole at-bat, so the prompt is strict about one thing: a line
+about pitch 3 can only use what happened through pitch 3, because the game shows it right
+after pitch 3 is revealed and before you call pitch 4.
 """
 
 from __future__ import annotations
@@ -141,6 +146,64 @@ def parse(ab: dict, text: str) -> dict:
     if missing:
         raise ValueError(f"{ab['id']}: no line for pitch {missing}")
     return {"pitches": [lines[n] for n in wanted], "wrap": data["wrap"].strip()}
+
+
+def prompt_document(payload: dict) -> str:
+    """everything a claude code session needs to write commentary.json by hand."""
+    parts = [
+        "# booth commentary",
+        "",
+        "write web/public/data/commentary.json for the at-bats below. then run "
+        "`uv run batter-up commentary --check` and fix anything it reports.",
+        "",
+        "## the rules",
+        "",
+        SYSTEM,
+        "",
+        "## the file",
+        "",
+        "one entry per at-bat id, with one line per pitch in pitch order and a wrap:",
+        "",
+        "```json",
+        json.dumps(
+            {
+                "version": 1,
+                "model": "claude code session",
+                "atBats": {"<at-bat id>": {"pitches": ["line for pitch 1", "..."], "wrap": "..."}},
+            },
+            indent=2,
+        ),
+        "```",
+        "",
+        "## the at-bats",
+    ]
+    for ab in payload["atBats"]:
+        parts += ["", f"### {ab['id']}", "", describe_at_bat(ab, payload["pitchCalls"])]
+    return "\n".join(parts) + "\n"
+
+
+def check(payload: dict, written: dict) -> list[str]:
+    """problems with a commentary file, empty when the game can use all of it."""
+    problems = []
+    lines = written.get("atBats", {})
+    for ab in payload["atBats"]:
+        entry = lines.get(ab["id"])
+        if entry is None:
+            problems.append(f"{ab['id']}: no lines")
+            continue
+        pitches = entry.get("pitches", [])
+        if len(pitches) != len(ab["pitches"]):
+            problems.append(f"{ab['id']}: {len(pitches)} lines for {len(ab['pitches'])} pitches")
+        if any(not isinstance(x, str) or not x.strip() for x in pitches):
+            problems.append(f"{ab['id']}: an empty line")
+        if not str(entry.get("wrap", "")).strip():
+            problems.append(f"{ab['id']}: no wrap")
+        for text in [*pitches, entry.get("wrap", "")]:
+            if isinstance(text, str) and len(text.split()) > 40:
+                problems.append(f"{ab['id']}: a line runs {len(text.split())} words")
+    extra = set(lines) - {ab["id"] for ab in payload["atBats"]}
+    problems += [f"{x}: not an at-bat in atbats.json" for x in sorted(extra)]
+    return problems
 
 
 def submit(client: Any, payload: dict) -> str:
