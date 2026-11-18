@@ -24,6 +24,14 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
+      - name: whole pipeline on a made up league
+        env:
+          BATTER_UP_DATA: data/synthetic
+        run: |
+          uv run batter-up synth --games 40
+          uv run batter-up build
+          uv run batter-up features
+          uv run batter-up train
 
   web:
     runs-on: ubuntu-latest

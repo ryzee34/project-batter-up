@@ -27,6 +27,14 @@ def cmd_fetch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_synth(args: argparse.Namespace) -> int:
+    from batter_up.data.synthetic import synth_season
+
+    for year in _season_range(args.season):
+        synth_season(year, paths.RAW, games=args.games, seed=args.seed)
+    return 0
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     from batter_up.data.pitches import build
 
@@ -69,6 +77,42 @@ def cmd_baseline(args: argparse.Namespace) -> int:
     return 0
 
 
+def _train_test(test_season: int):
+    import pandas as pd
+
+    from batter_up.features import split_by_season
+
+    path = paths.INTERIM / "features.parquet"
+    if not path.exists():
+        raise SystemExit("no features yet, run batter-up features first")
+    return split_by_season(pd.read_parquet(path), test_season)
+
+
+def cmd_train(args: argparse.Namespace) -> int:
+    from batter_up.model.evaluate import evaluate, lines
+    from batter_up.model.lgbm import PitchModel, write_json
+
+    train, test = _train_test(args.test_season)
+    print(f"training on {len(train):,} pitches from before {args.test_season}")
+    model = PitchModel.fit(train)
+    model.save(paths.MODELS)
+    report = evaluate(model, train, test)
+    write_json(paths.MODELS / "metrics.json", report)
+    print("\n".join(lines(report)))
+    return 0
+
+
+def cmd_evaluate(args: argparse.Namespace) -> int:
+    from batter_up.model.evaluate import evaluate, lines
+    from batter_up.model.lgbm import PitchModel, write_json
+
+    train, test = _train_test(args.test_season)
+    report = evaluate(PitchModel.load(paths.MODELS), train, test)
+    write_json(paths.MODELS / "metrics.json", report)
+    print("\n".join(lines(report)))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="batter-up", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -81,6 +125,12 @@ def build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--pause", type=float, default=1.0, help="seconds between requests")
     fetch.set_defaults(func=cmd_fetch)
 
+    synth = sub.add_parser("synth", help="write a made up league in savant's format, for practice")
+    synth.add_argument("--season", type=int, nargs="+", default=[2023, 2024, 2025, 2026])
+    synth.add_argument("--games", type=int, default=160, help="games per team per season")
+    synth.add_argument("--seed", type=int, default=7)
+    synth.set_defaults(func=cmd_synth)
+
     build = sub.add_parser("build", help="clean downloaded days into one parquet per season")
     build.add_argument("--season", type=int, nargs="+", default=[2023, 2024, 2025, 2026])
     build.set_defaults(func=cmd_build)
@@ -91,6 +141,14 @@ def build_parser() -> argparse.ArgumentParser:
     baseline = sub.add_parser("baseline", help="score the favorite pitch baseline")
     baseline.add_argument("--test-season", type=int, default=2026)
     baseline.set_defaults(func=cmd_baseline)
+
+    train = sub.add_parser("train", help="train the pitch model and score it against the baseline")
+    train.add_argument("--test-season", type=int, default=2026)
+    train.set_defaults(func=cmd_train)
+
+    evaluate = sub.add_parser("evaluate", help="score the saved model again")
+    evaluate.add_argument("--test-season", type=int, default=2026)
+    evaluate.set_defaults(func=cmd_evaluate)
 
     return parser
 
