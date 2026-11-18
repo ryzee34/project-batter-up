@@ -32,6 +32,8 @@ def cmd_synth(args: argparse.Namespace) -> int:
 
     for year in _season_range(args.season):
         synth_season(year, paths.RAW, games=args.games, seed=args.seed)
+    # export reads this to mark the game data as made up
+    (paths.DATA / "SYNTHETIC").write_text("made up by batter-up synth\n")
     return 0
 
 
@@ -113,6 +115,38 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    import json
+
+    import pandas as pd
+
+    from batter_up.export import Pick, check, export
+    from batter_up.model.lgbm import PitchModel
+
+    metrics_path = paths.MODELS / "metrics.json"
+    if not metrics_path.exists():
+        raise SystemExit("no trained model yet, run batter-up train first")
+    metrics = json.loads(metrics_path.read_text())
+    features = pd.read_parquet(paths.INTERIM / "features.parquet")
+    payload, summary = export(
+        features,
+        PitchModel.load(paths.MODELS),
+        metrics["test_season"],
+        metrics,
+        pick=Pick(at_bats=args.at_bats, team=args.team),
+        synthetic=(paths.DATA / "SYNTHETIC").exists(),
+    )
+    check(payload)
+    paths.WEB_DATA.mkdir(parents=True, exist_ok=True)
+    out = paths.WEB_DATA / "atbats.json"
+    out.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    (paths.WEB_DATA / "model.json").write_text(json.dumps(summary, indent=2) + "\n")
+    pitches = sum(len(ab["pitches"]) for ab in payload["atBats"])
+    size = out.stat().st_size / 1024
+    print(f"{len(payload['atBats'])} at-bats, {pitches} pitches -> {out.name} ({size:.0f} KB)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="batter-up", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -149,6 +183,11 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate = sub.add_parser("evaluate", help="score the saved model again")
     evaluate.add_argument("--test-season", type=int, default=2026)
     evaluate.set_defaults(func=cmd_evaluate)
+
+    exp = sub.add_parser("export", help="write the game's at-bats and model calls to web/")
+    exp.add_argument("--at-bats", type=int, default=40)
+    exp.add_argument("--team", default="LAD")
+    exp.set_defaults(func=cmd_export)
 
     return parser
 

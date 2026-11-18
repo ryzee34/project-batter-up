@@ -21,6 +21,7 @@ uv run batter-up build      # cleans them into data/interim/pitches_<year>.parqu
 uv run batter-up features   # everything the model knows before each pitch
 uv run batter-up baseline   # how often "his favorite pitch" is right, the number to beat
 uv run batter-up train      # trains the model on 2023-2025 and scores it on 2026 next to the baseline
+uv run batter-up export     # picks the at-bats and writes them with the model's calls to web/public/data
 uv run pytest
 ```
 
@@ -30,6 +31,8 @@ no network or no patience? `synth` writes a made up league in the exact same csv
 export BATTER_UP_DATA=data/synthetic
 uv run batter-up synth && uv run batter-up build && uv run batter-up features && uv run batter-up train
 ```
+
+when the game data was made this way, `atbats.json` says `"synthetic": true` and the game says so on screen
 
 ## the model
 
@@ -44,6 +47,10 @@ cd web
 npm install
 npm run dev
 ```
+
+## what the game gets
+
+`export` picks about 40 dodgers at-bats from the test season, so every call the model makes in the game is one it made blind. it favors at-bats that are fun to call (long, late, close, runners on, full counts, strikeouts and homers) and spreads them across pitchers and games. each pitch carries the count, what was thrown and where, the flight numbers to replay it, the model's odds for every pitch type and zone, its single call, and the baseline's call. the pitcher's scouting report is his mix in every game before that day. it all comes to about 130 KB of json.
 
 ## the data
 
