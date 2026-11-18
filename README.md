@@ -52,6 +52,12 @@ npm run dev
 
 `export` picks about 40 dodgers at-bats from the test season, so every call the model makes in the game is one it made blind. it favors at-bats that are fun to call (long, late, close, runners on, full counts, strikeouts and homers) and spreads them across pitchers and games. each pitch carries the count, what was thrown and where, the flight numbers to replay it, the model's odds for every pitch type and zone, its single call, and the baseline's call. the pitcher's scouting report is his mix in every game before that day. it all comes to about 130 KB of json.
 
+## the game
+
+plain typescript, no framework. `web/src/game.ts` is the rules (a session walks pitch by pitch through a few at-bats, and you and the model are graded the same way: 2 for the pitch type, 1 for the zone, 1 more for both) and is tested with vitest. the page re-renders from one state object on every click. the zone is drawn from the catcher's view, with the box as the strike zone and the frame around it as the chase area, and the actual pitch lands at its real plate_x and plate_z.
+
+keyboard works too: f s c l u h p for the pitch, 1 to 9 for the zone, 0 for a chase, enter to call it.
+
 ## the data
 
 pitch data comes from mlb's public statcast feed on baseball savant. this is a personal, non-commercial project and isn't affiliated with mlb or the dodgers.
