@@ -15,7 +15,7 @@ baseball savant ──fetch──> daily csvs ──build──> pitches per sea
                                                                                      │
                                                                           export ────┤
                                                                                      ▼
-                         web/public/data/atbats.json  model.json  commentary.json (claude, one batch)
+                         web/public/data/atbats.json  model.json  commentary.json (claude code, /booth)
                                                                                      │
                                                     static site on github pages <────┘
                                                     typescript + vite, three.js replay
@@ -101,6 +101,10 @@ either way the hard rule is that the line for pitch 3 can only use what happened
 ## deploying
 
 `.github/workflows/pages.yml` tests, builds and publishes `web/dist` to github pages on every push to main. the one time setup is repo settings > pages > source: github actions.
+
+## what it costs
+
+nothing past a claude plan. the pitch data is public, github actions and pages are free for a public repo, the model trains in seconds on a laptop, and the booth lines are written in a claude code session. the only paid path is the optional `--api` flag.
 
 ## the data
 
