@@ -63,3 +63,41 @@ def test_html_error_pages_are_not_cached(tmp_path):
     with pytest.raises(RuntimeError, match="html"):
         fetch_range(date(2025, 6, 1), date(2025, 6, 1), tmp_path, client=client, pause=0)
     assert not cache_path(tmp_path, date(2025, 6, 1)).exists()
+
+
+def test_dropped_connections_are_retried(tmp_path):
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            raise httpx.ReadError("connection reset by peer")
+        if len(calls) == 2:
+            return httpx.Response(503, text="busy")
+        return httpx.Response(200, text=CSV)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    paths = fetch_range(
+        date(2025, 6, 1),
+        date(2025, 6, 1),
+        tmp_path,
+        client=client,
+        pause=0,
+        retry_wait=0,
+        log=lambda _: None,
+    )
+    assert len(calls) == 3
+    assert paths[0].read_text() == CSV
+
+
+def test_client_errors_are_not_retried(tmp_path):
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(400, text="bad query")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(httpx.HTTPStatusError):
+        fetch_range(date(2025, 6, 1), date(2025, 6, 1), tmp_path, client=client, pause=0)
+    assert len(calls) == 1
