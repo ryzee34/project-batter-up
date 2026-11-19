@@ -34,9 +34,17 @@ PITCH_GROUPS: dict[str, str] = {
 PITCH_CALLS = sorted(set(PITCH_GROUPS.values()))
 
 # statcast zones 1-9 are the strike zone, left to right and top to bottom from the
-# catcher's view. 11-14 are the four corners outside it, which the game calls a chase
-CHASE = "chase"
-ZONES = [str(z) for z in range(1, 10)] + [CHASE]
+# catcher's view. 11-14 are the corners outside it. a chase is split four ways by the edge
+# the ball missed most: up, down, or off the catcher's left or right. the game turns left
+# and right into in and away for whoever is batting
+CHASE_UP = "chase_up"
+CHASE_DOWN = "chase_down"
+CHASE_LEFT = "chase_left"
+CHASE_RIGHT = "chase_right"
+CHASES = [CHASE_UP, CHASE_DOWN, CHASE_LEFT, CHASE_RIGHT]
+ZONES = [str(z) for z in range(1, 10)] + CHASES
+# half the plate plus the ball, in feet. the same edge statcast draws zones 1-9 with
+EDGE = 0.83
 
 KEEP = [
     # who and when
@@ -93,15 +101,43 @@ KEEP = [
 ]
 
 
-def zone_call(zone: float | int | None) -> str | None:
+def zone_call(
+    zone: float | int | None,
+    plate_x: float | None = None,
+    plate_z: float | None = None,
+    sz_top: float | None = None,
+    sz_bot: float | None = None,
+) -> str | None:
+    """the game's spot for one pitch: zones 1-9, or the side of the zone it missed."""
     if zone is None or pd.isna(zone):
         return None
     z = int(zone)
     if 1 <= z <= 9:
         return str(z)
-    if 11 <= z <= 14:
-        return CHASE
-    return None
+    if not 11 <= z <= 14:
+        return None
+    where = (plate_x, plate_z, sz_top, sz_bot)
+    if any(v is None or pd.isna(v) for v in where):
+        # no location, so go by the corner statcast put it in: 11 and 12 are the top
+        return CHASE_UP if z in (11, 12) else CHASE_DOWN
+    # how far past each edge it was, in feet. the biggest miss names the side
+    misses = {
+        CHASE_LEFT: -plate_x - EDGE,
+        CHASE_RIGHT: plate_x - EDGE,
+        CHASE_UP: plate_z - sz_top,
+        CHASE_DOWN: sz_bot - plate_z,
+    }
+    return max(misses, key=misses.__getitem__)
+
+
+def zone_calls(df: pd.DataFrame) -> pd.Series:
+    """zone_call for every row of a savant frame."""
+    cols = ["zone", "plate_x", "plate_z", "sz_top", "sz_bot"]
+    return pd.Series(
+        [zone_call(*row) for row in df[cols].itertuples(index=False, name=None)],
+        index=df.index,
+        dtype=object,
+    )
 
 
 def read_raw(paths: Iterable[Path]) -> pd.DataFrame:
@@ -124,7 +160,7 @@ def clean(raw: pd.DataFrame) -> pd.DataFrame:
     df = raw[KEEP].copy()
 
     df["pitch_call"] = df["pitch_type"].map(PITCH_GROUPS)
-    df["zone_call"] = df["zone"].map(zone_call)
+    df["zone_call"] = zone_calls(df)
     df = df.dropna(subset=["pitch_call", "zone_call"])
 
     df["game_date"] = pd.to_datetime(df["game_date"])

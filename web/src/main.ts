@@ -7,12 +7,19 @@ import { PERFECT, Session, deal, describe, mulberry32, type Guess, type PitchRes
 import { shareCard } from './card'
 import { dailyAtBats, dayKey, dayNumber, result, shareText, streak, type Result } from './daily'
 import { loadResults, saveResult } from './store'
-import { PITCHES, PITCH_ORDER, escape, ordinal, pct, spot, spotPhrase } from './labels'
+import { PITCHES, PITCH_ORDER, escape, ordinal, pct, spot } from './labels'
 import type { Replay } from './replay'
 import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
 import { zoneGrid } from './zone'
 
 const AT_BATS_PER_GAME = 3
+// arrows point at the side of the zone a chase misses on, as the catcher sees it
+const ARROWS: Record<string, Zone> = {
+  ArrowUp: 'chase_up',
+  ArrowDown: 'chase_down',
+  ArrowLeft: 'chase_left',
+  ArrowRight: 'chase_right',
+}
 
 type Phase = 'title' | 'calling' | 'reveal' | 'done'
 
@@ -302,7 +309,7 @@ function renderCalling(): string {
   const stands = ab.batter.stands
   const callLabel =
     pitch && zone
-      ? `call it: ${pitch}, ${spotPhrase(zone, stands)}`
+      ? `call it: ${pitch}, ${spot(zone, stands)}`
       : pitch
         ? 'now pick a spot'
         : zone
@@ -318,12 +325,10 @@ function renderCalling(): string {
         ${pitchPicker(ab, pitch)}
       </div>
       <div class="panel step spot ${zone ? 'done' : ''}">
-        <h3><span class="num">2</span> pick the spot ${zone ? `<em>${spotPhrase(zone, stands)}</em>` : ''}</h3>
-        <p class="note">you're behind the catcher. tap a box in the zone, or chase if it misses</p>
+        <h3><span class="num">2</span> pick the spot ${zone ? `<em>${spot(zone, stands)}</em>` : ''}</h3>
+        <p class="note">you're behind the catcher. tap a box in the zone, or the side it misses on for a chase</p>
         ${zoneGrid({ selected: zone, history: s.history, stands }, true)}
-        <button class="chase-button ${zone === 'chase' ? 'selected' : ''}" data-zone="chase" aria-pressed="${zone === 'chase'}">
-          <b>chase</b><span>out of the zone, to get a swing</span><kbd>0</kbd>
-        </button>
+        <p class="keys"><kbd>1</kbd>–<kbd>9</kbd> the zone <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> a chase</p>
       </div>
       <div class="panel so-far ${s.history.length ? '' : 'empty'}">
         <h3>this at-bat so far</h3>
@@ -425,7 +430,7 @@ function renderReveal(): string {
         <div class="pitch-card" style="--c:${PITCHES[p.pitch].color}">
           <p class="eyebrow">pitch ${p.n} · ${p.count} count</p>
           <h2>${p.mph} <small>mph</small> ${escape(p.name.toLowerCase())}</h2>
-          <p>${spotPhrase(p.zone, stands)} · <b>${describe(p.result)}</b>${p.spin ? ` · ${p.spin} rpm` : ''}</p>
+          <p>${spot(p.zone, stands)} · <b>${describe(p.result)}</b>${p.spin ? ` · ${p.spin} rpm` : ''}</p>
         </div>
         <p class="verdict ${r.you.points === PERFECT ? 'perfect' : r.you.points ? 'part' : 'miss'}">
           <b>+${r.you.points}</b> ${verdictLine(r.you)}
@@ -577,12 +582,11 @@ app.addEventListener('click', (e) => {
   const pitch = target.closest<HTMLElement>('[data-pitch]')?.dataset.pitch
   if (pitch) return choosePitch(pitch as PitchCall)
   // only the live zone takes clicks, the one on the reveal is a picture
-  const zone = target.closest<HTMLElement>('.interactive [data-zone], .interactive[data-zone], .chase-button')
-    ?.dataset.zone
+  const zone = target.closest<HTMLElement>('.interactive [data-zone]')?.dataset.zone
   if (zone) return chooseZone(zone as Zone)
 })
 
-// keys: letters for pitches (f s c l u h p), 1-9 for zones, 0 for chase, enter to go
+// keys: letters for pitches (f s c l u h p), 1-9 for zones, arrows for a chase, enter to go
 window.addEventListener('keydown', (e) => {
   if (!state || e.metaKey || e.ctrlKey || e.altKey) return
   const key = e.key.toLowerCase()
@@ -595,7 +599,11 @@ window.addEventListener('keydown', (e) => {
   const pitch = PITCH_ORDER.find((c) => PITCHES[c].key === key)
   if (pitch) return choosePitch(pitch)
   if (/^[1-9]$/.test(key)) return chooseZone(key as Zone)
-  if (key === '0') return chooseZone('chase')
+  const chase = ARROWS[e.key]
+  if (chase && state.phase === 'calling') {
+    e.preventDefault()
+    return chooseZone(chase)
+  }
 })
 
 boot()
