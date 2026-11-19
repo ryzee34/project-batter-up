@@ -163,28 +163,33 @@ export class Replay {
       this.zone.add(box(-ZONE_HALF, bot + i * h, ZONE_HALF, bot + i * h, faint))
     }
 
-    const cell = (zone: Zone, color: string, inset: number) => {
-      if (zone === 'chase') {
-        const pad = 0.18 + inset
-        this.marks.add(
-          box(-ZONE_HALF - pad, bot - pad, ZONE_HALF + pad, top + pad, new THREE.LineBasicMaterial({ color })),
-        )
-        return
-      }
-      const n = Number(zone) - 1
-      const row = Math.floor(n / 3)
-      const col = n % 3
-      const x1 = -ZONE_HALF + col * w
-      const z2 = top - row * h
+    // a band of the frame, x1..x2 across and z1..z2 up, shaded with an outline
+    const area = (x1: number, z1: number, x2: number, z2: number, color: string, inset: number) => {
       const quad = new THREE.Mesh(
-        new THREE.PlaneGeometry(w - inset * 2, h - inset * 2),
+        new THREE.PlaneGeometry(x2 - x1 - inset * 2, z2 - z1 - inset * 2),
         new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false }),
       )
-      quad.position.copy(v(x1 + w / 2, y + 0.01, z2 - h / 2))
+      quad.position.copy(v((x1 + x2) / 2, y + 0.01, (z1 + z2) / 2))
       this.marks.add(quad)
       this.marks.add(
-        box(x1 + inset, z2 - h + inset, x1 + w - inset, z2 - inset, new THREE.LineBasicMaterial({ color })),
+        box(x1 + inset, z1 + inset, x2 - inset, z2 - inset, new THREE.LineBasicMaterial({ color })),
       )
+    }
+    const cell = (zone: Zone, color: string, inset: number) => {
+      // a chase lights up a band just past the edge it missed
+      const out = 0.7
+      const wide = ZONE_HALF + out
+      const chase: Record<string, [number, number, number, number]> = {
+        chase_up: [-wide, top, wide, top + out],
+        chase_down: [-wide, bot - out, wide, bot],
+        chase_left: [-wide, bot, -ZONE_HALF, top],
+        chase_right: [ZONE_HALF, bot, wide, top],
+      }
+      if (zone in chase) return area(...chase[zone], color, inset)
+      const n = Number(zone) - 1
+      const x1 = -ZONE_HALF + (n % 3) * w
+      const z2 = top - Math.floor(n / 3) * h
+      area(x1, z2 - h, x1 + w, z2, color, inset)
     }
     if (marks.model) cell(marks.model, MODEL, 0.03)
     if (marks.you) cell(marks.you, YOU, 0.09)

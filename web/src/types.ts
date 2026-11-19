@@ -9,7 +9,10 @@ export type PitchCall =
   | 'slider'
   | 'splitter'
 
-export type Zone = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'chase'
+export type Chase = 'chase_up' | 'chase_down' | 'chase_left' | 'chase_right'
+
+/** 1-9 is the strike zone from the catcher's view, a chase is named for the edge it missed */
+export type Zone = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | Chase
 
 export interface Pitch {
   n: number

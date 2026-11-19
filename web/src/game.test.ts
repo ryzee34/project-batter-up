@@ -52,13 +52,13 @@ group('grade', () => {
     })
     expect(grade({ pitch: 'slider', zone: '1' }, truth).points).toBe(2)
     expect(grade({ pitch: 'fastball', zone: '9' }, truth).points).toBe(1)
-    expect(grade({ pitch: 'fastball', zone: 'chase' }, truth).points).toBe(0)
+    expect(grade({ pitch: 'fastball', zone: 'chase_up' }, truth).points).toBe(0)
   })
 })
 
 group('Session', () => {
   const abs = [
-    atBat('a', [pitch(1, 'fastball', '2', ['fastball', '2']), pitch(2, 'slider', 'chase', ['fastball', 'chase'])]),
+    atBat('a', [pitch(1, 'fastball', '2', ['fastball', '2']), pitch(2, 'slider', 'chase_down', ['fastball', 'chase_down'])]),
     atBat('b', [pitch(1, 'changeup', '8', ['sinker', '7'])]),
   ]
 
