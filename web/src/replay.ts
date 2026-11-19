@@ -15,6 +15,8 @@ const ZONE_HALF = 0.83
 const BALL_RADIUS = 0.121
 const SLOW = 0.22
 const TRAIL_STEPS = 60
+const YOU = '#ffffff'
+const MODEL = '#f5c542'
 
 function v(x: number, y: number, z: number): THREE.Vector3 {
   return new THREE.Vector3(x, z, -y)
@@ -34,7 +36,6 @@ export class Replay {
   private trail: THREE.Line
   private zone = new THREE.Group()
   private marks = new THREE.Group()
-  private batter = new THREE.Group()
   private frame = 0
   private flight: Flight | null = null
   private started = 0
@@ -46,8 +47,8 @@ export class Replay {
     this.canvas = this.renderer.domElement
     this.canvas.className = 'replay-canvas'
 
-    this.scene.background = new THREE.Color('#0a1520')
-    this.scene.fog = new THREE.Fog('#0a1520', 90, 260)
+    this.scene.background = sky()
+    this.scene.fog = new THREE.Fog('#0c1a2a', 110, 300)
     // the umpire's eyes, over the catcher's shoulder: far enough back to see the whole
     // zone and the mound, low enough to see the break
     this.camera.position.copy(v(0, -7.5, 3.4))
@@ -59,7 +60,7 @@ export class Replay {
     this.scene.add(lights)
 
     this.field()
-    this.scene.add(this.zone, this.marks, this.batter)
+    this.scene.add(this.zone, this.marks)
 
     this.ball = new THREE.Mesh(
       new THREE.SphereGeometry(BALL_RADIUS, 24, 16),
@@ -88,7 +89,7 @@ export class Replay {
   private field(): void {
     const grass = new THREE.Mesh(
       new THREE.CircleGeometry(400, 64),
-      new THREE.MeshStandardMaterial({ color: '#1f5a2e', roughness: 1 }),
+      new THREE.MeshStandardMaterial({ map: mowed(), roughness: 1 }),
     )
     grass.rotation.x = -Math.PI / 2
     this.scene.add(grass)
@@ -177,23 +178,16 @@ export class Replay {
       const z2 = top - row * h
       const quad = new THREE.Mesh(
         new THREE.PlaneGeometry(w - inset * 2, h - inset * 2),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false }),
       )
       quad.position.copy(v(x1 + w / 2, y + 0.01, z2 - h / 2))
       this.marks.add(quad)
+      this.marks.add(
+        box(x1 + inset, z2 - h + inset, x1 + w - inset, z2 - inset, new THREE.LineBasicMaterial({ color })),
+      )
     }
-    if (marks.model) cell(marks.model, '#e8c547', 0.02)
-    if (marks.you) cell(marks.you, '#ffffff', 0.08)
-  }
-
-  private drawBatter(stands: 'L' | 'R', height: number): void {
-    this.batter.clear()
-    // a righty stands on the catcher's left
-    const x = stands === 'R' ? -3.2 : 3.2
-    const mat = new THREE.MeshStandardMaterial({ color: '#25384c', transparent: true, opacity: 0.4 })
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.7, height - 2.2, 6, 12), mat)
-    body.position.copy(v(x, 0.9, height / 2))
-    this.batter.add(body)
+    if (marks.model) cell(marks.model, MODEL, 0.03)
+    if (marks.you) cell(marks.you, YOU, 0.09)
   }
 
   private fit(): void {
@@ -202,13 +196,14 @@ export class Replay {
     this.renderer.setSize(w, h, false)
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()
+    // resizing clears the canvas, so draw the frame again even when nothing is moving
+    this.renderer.render(this.scene, this.camera)
   }
 
   /** throw the pitch: once at real speed, then again slowed down with its path traced */
-  play(p: Pitch, stands: 'L' | 'R', marks: ReplayMarks = {}): void {
+  play(p: Pitch, marks: ReplayMarks = {}): void {
     this.flight = flight(p)
     this.drawZone(p, marks)
-    this.drawBatter(stands, Math.max(5.6, p.sz[1] * 1.85))
     const color = PITCHES[p.pitch].color
     ;(this.trail.material as THREE.LineBasicMaterial).color.set(color)
     this.trail.geometry.setDrawRange(0, 0)
@@ -294,4 +289,39 @@ export function webglAvailable(): boolean {
   } catch {
     return false
   }
+}
+
+/** a night sky that fades to stadium glow at the horizon */
+function sky(): THREE.Texture {
+  const c = document.createElement('canvas')
+  c.width = 4
+  c.height = 256
+  const g = c.getContext('2d')!
+  const grad = g.createLinearGradient(0, 0, 0, 256)
+  grad.addColorStop(0, '#050b14')
+  grad.addColorStop(0.55, '#0f2238')
+  grad.addColorStop(1, '#2a4a6e')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 4, 256)
+  const texture = new THREE.CanvasTexture(c)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
+}
+
+/** grass with mowing stripes running out toward the mound */
+function mowed(): THREE.Texture {
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 64
+  const g = c.getContext('2d')!
+  g.fillStyle = '#21602f'
+  g.fillRect(0, 0, 64, 64)
+  g.fillStyle = '#1b5228'
+  g.fillRect(0, 0, 32, 64)
+  const texture = new THREE.CanvasTexture(c)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(40, 40)
+  texture.anisotropy = 4
+  return texture
 }

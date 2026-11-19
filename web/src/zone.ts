@@ -2,7 +2,7 @@
 // around it is the chase area. plate_x runs -1.5 to 1.5 ft across the frame and the zone
 // always sits in the middle half vertically, whoever is batting
 
-import { PITCHES, escape } from './labels'
+import { PITCHES, spot } from './labels'
 import type { Pitch, Zone } from './types'
 
 const HALF_WIDTH = 1.5
@@ -15,7 +15,7 @@ export interface Marks {
   heat?: number[]
   pitch?: Pitch
   history?: Pitch[]
-  stands?: 'L' | 'R'
+  stands: 'L' | 'R'
 }
 
 export function position(p: Pitch): { left: number; top: number } {
@@ -23,7 +23,7 @@ export function position(p: Pitch): { left: number; top: number } {
   const [bot, top] = p.sz
   const left = ((x + HALF_WIDTH) / (2 * HALF_WIDTH)) * 100
   const height = ((z - bot) / (top - bot)) * 50 + 25
-  return { left: clamp(left, 2, 98), top: clamp(100 - height, 2, 98) }
+  return { left: clamp(left, 3, 97), top: clamp(100 - height, 3, 97) }
 }
 
 function clamp(x: number, lo: number, hi: number): number {
@@ -44,37 +44,42 @@ export function zoneGrid(m: Marks, interactive: boolean): string {
   const cells = Array.from({ length: 9 }, (_, i) => {
     const zone = String(i + 1) as Zone
     const heat = m.heat ? shade(m.heat[i]) : 0
-    return `<button class="cell ${tags(m, zone)}" data-zone="${zone}" ${interactive ? '' : 'tabindex="-1"'}
-      style="--heat:${heat}%" aria-label="zone ${zone}">
-      ${badges(m, zone)}
-    </button>`
+    const label = spot(zone, m.stands)
+    const attrs = interactive
+      ? `aria-pressed="${m.selected === zone}" title="${label}"`
+      : 'tabindex="-1" aria-hidden="true"'
+    return `<button class="cell ${tags(m, zone)}" data-zone="${zone}" ${attrs}
+      style="--heat:${heat}%" aria-label="${label}">${badges(m, zone)}</button>`
   }).join('')
   const history = (m.history ?? []).map((p) => dot(p, 'past', String(p.n))).join('')
   const actual = m.pitch ? dot(m.pitch, 'actual') : ''
   const chaseHeat = m.heat ? (Number(shade(m.heat[9])) * 0.45).toFixed(1) : 0
-  const batter = m.stands
-    ? `<span class="batter ${m.stands === 'R' ? 'left' : 'right'}">${m.stands}HB</span>`
-    : ''
+  // a righty stands on the catcher's left, so that side of the plate is in
+  const [left, right] = m.stands === 'R' ? ['in', 'away'] : ['away', 'in']
   return `
     <div class="zone-frame ${interactive ? 'interactive' : ''} ${tags(m, 'chase')}" data-zone="chase"
       role="group" aria-label="strike zone, catcher's view" style="--chase-heat:${chaseHeat}%">
-      ${batter}
-      <div class="strike-zone" style="left:${inset}%;right:${inset}%">${cells}</div>
-      <span class="chase-label">chase ${badges(m, 'chase')}</span>
+      <span class="batter-box ${m.stands === 'R' ? 'left' : 'right'}" aria-hidden="true">
+        <i></i>${m.stands === 'R' ? 'righty' : 'lefty'}
+      </span>
+      <div class="strike-zone" style="left:${inset}%;right:${inset}%">
+        ${cells}
+        <span class="axis up">up</span><span class="axis down">down</span>
+        <span class="axis left">${left}</span><span class="axis right">${right}</span>
+      </div>
+      <span class="chase-badges">${badges(m, 'chase')}</span>
+      <span class="plate" aria-hidden="true"></span>
       ${history}${actual}
     </div>`
 }
 
 function tags(m: Marks, zone: Zone): string {
-  return [
-    m.selected === zone ? 'selected' : '',
-    m.pitch?.zone === zone ? 'truth' : '',
-  ].join(' ')
+  return [m.selected === zone ? 'selected' : '', m.pitch?.zone === zone ? 'truth' : ''].join(' ')
 }
 
 function badges(m: Marks, zone: Zone): string {
   const out = []
   if (m.you === zone) out.push('<i class="badge you">you</i>')
   if (m.model === zone) out.push('<i class="badge model">model</i>')
-  return out.length ? `<span class="badges">${out.join('')}</span>` : escape('')
+  return out.length ? `<span class="badges">${out.join('')}</span>` : ''
 }

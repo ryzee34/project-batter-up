@@ -20,13 +20,25 @@ export const PITCH_ORDER: PitchCall[] = [
   'splitter',
 ]
 
-export function zoneLabel(zone: Zone): string {
+/**
+ * where a zone is, the way a broadcast says it: in and away depend on the batter. the
+ * grid is the catcher's view, so a righty stands on the left and the left column is in
+ */
+export function spot(zone: Zone, stands: 'L' | 'R' = 'R'): string {
   if (zone === 'chase') return 'chase'
   const n = Number(zone) - 1
-  const row = ['up', 'middle', 'down'][Math.floor(n / 3)]
-  const col = ['left', 'center', 'right'][n % 3]
-  if (row === 'middle' && col === 'center') return 'middle middle'
-  return `${row} ${col}`
+  const row = ['up', '', 'down'][Math.floor(n / 3)]
+  const sides = stands === 'R' ? ['in', '', 'away'] : ['away', '', 'in']
+  const col = sides[n % 3]
+  if (!row && !col) return 'middle middle'
+  if (!row) return col
+  if (!col) return row
+  return `${row} and ${col}`
+}
+
+/** a spot in a sentence: "chase" reads better as "off the plate" */
+export function spotPhrase(zone: Zone, stands: 'L' | 'R' = 'R'): string {
+  return zone === 'chase' ? 'off the plate' : spot(zone, stands)
 }
 
 export function ordinal(n: number): string {
