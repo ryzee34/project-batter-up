@@ -81,9 +81,13 @@ class Prediction:
         return self.joint.sum(axis=1)
 
     def calls(self) -> tuple[pd.Series, pd.Series]:
-        """the likeliest (pitch, zone) pair for every row."""
-        flat = self.joint.reshape(len(self.joint), -1).argmax(axis=1)
-        p, z = np.divmod(flat, len(ZONES))
+        """the likeliest pitch, then the likeliest spot for that pitch, for every row.
+
+        not the likeliest pair: a pitch that always lands in the same spot (a slider in the
+        dirt) would beat a likelier pitch whose spots are spread out, and the pitch call
+        would get worse to make the spot call look sure."""
+        p = self.pitch.argmax(axis=1)
+        z = self.joint[np.arange(len(p)), p].argmax(axis=1)
         return (
             pd.Series(np.array(PITCH_CALLS)[p]),
             pd.Series(np.array(ZONES)[z]),

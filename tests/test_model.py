@@ -39,13 +39,14 @@ def test_probabilities_add_up(model, split):
     np.testing.assert_allclose(pred.joint.sum(axis=2), pred.pitch, atol=1e-6)
 
 
-def test_the_call_is_the_likeliest_pair(model, split):
+def test_the_call_is_the_likeliest_pitch_then_its_likeliest_spot(model, split):
     _, test = split
     pred = model.predict(test.head(20))
     pitch, zone = pred.calls()
     for i in range(20):
         p, z = PITCH_CALLS.index(pitch[i]), ZONES.index(zone[i])
-        assert pred.joint[i, p, z] == pred.joint[i].max()
+        assert pred.pitch[i, p] == pred.pitch[i].max()
+        assert pred.joint[i, p, z] == pred.joint[i, p].max()
 
 
 def test_early_stopping_holds_out_the_last_training_season(split):
