@@ -77,6 +77,31 @@ def fetch_day(client: httpx.Client, day: date) -> str:
     return text
 
 
+def fetch_day_retrying(
+    client: httpx.Client, day: date, *, tries: int = 4, wait: float = 5.0, log=print
+) -> str:
+    """fetch_day, trying again when the connection drops or savant has a bad moment.
+
+    a full season is about 200 requests, and over that many a reset connection or a 5xx
+    is likely. waits double each time. anything else, like an html error page, is raised
+    right away because asking again won't fix it.
+    """
+    for attempt in range(1, tries + 1):
+        try:
+            return fetch_day(client, day)
+        except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+            server_side = not isinstance(exc, httpx.HTTPStatusError) or (
+                exc.response.status_code >= 500 or exc.response.status_code == 429
+            )
+            if not server_side or attempt == tries:
+                raise
+            log(f"{day} failed ({exc.__class__.__name__}), trying again in {wait:.0f}s")
+            if wait:
+                time.sleep(wait)
+            wait *= 2
+    raise AssertionError("unreachable")
+
+
 def fetch_range(
     start: date,
     end: date,
@@ -85,6 +110,7 @@ def fetch_range(
     client: httpx.Client | None = None,
     pause: float = 1.0,
     log=print,
+    retry_wait: float = 5.0,
 ) -> list[Path]:
     """download every day in [start, end] that isn't cached yet. returns the cached paths."""
     owns_client = client is None
@@ -99,7 +125,7 @@ def fetch_range(
         for day in days(start, end):
             path = cache_path(raw_dir, day)
             if not path.exists():
-                text = fetch_day(client, day)
+                text = fetch_day_retrying(client, day, wait=retry_wait, log=log)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 tmp = path.with_suffix(".part")
                 tmp.write_text(text, encoding="utf-8")
