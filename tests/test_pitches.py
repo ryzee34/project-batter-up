@@ -1,7 +1,16 @@
 import pandas as pd
 import pytest
 
-from batter_up.data.pitches import CHASE, PITCH_CALLS, build, clean, zone_call
+from batter_up.data.pitches import (
+    CHASE_DOWN,
+    CHASE_LEFT,
+    CHASE_RIGHT,
+    CHASE_UP,
+    PITCH_CALLS,
+    build,
+    clean,
+    zone_call,
+)
 from tests.conftest import pitch
 
 
@@ -19,10 +28,34 @@ def test_pitch_calls_are_the_game_options():
 
 @pytest.mark.parametrize(
     ("zone", "call"),
-    [(1, "1"), (5, "5"), (9, "9"), (11, CHASE), (14, CHASE), (10, None), (None, None)],
+    [(1, "1"), (5, "5"), (9, "9"), (11, CHASE_UP), (14, CHASE_DOWN), (10, None), (None, None)],
 )
-def test_zone_call(zone, call):
+def test_zone_call_without_a_location(zone, call):
     assert zone_call(zone) == call
+
+
+@pytest.mark.parametrize(
+    ("zone", "x", "z", "call"),
+    [
+        (11, -0.2, 3.9, CHASE_UP),  # just left of center but way over the top
+        (13, -0.2, 0.4, CHASE_DOWN),  # in the dirt
+        (13, -1.6, 1.4, CHASE_LEFT),  # a foot off the plate, a little low
+        (12, 1.3, 3.6, CHASE_RIGHT),  # half a foot outside, barely high
+        (5, 1.3, 3.6, "5"),  # statcast's zone wins inside the box
+    ],
+)
+def test_a_chase_is_named_for_the_edge_it_missed_most(zone, x, z, call):
+    assert zone_call(zone, x, z, 3.4, 1.6) == call
+
+
+def test_clean_splits_chases_by_side(raw_frame):
+    df = clean(
+        raw_frame(
+            pitch(pitch_number=1, zone=11, plate_x=0.1, plate_z=4.0, sz_top=3.4, sz_bot=1.6),
+            pitch(pitch_number=2, zone=14, plate_x=1.5, plate_z=1.5, sz_top=3.4, sz_bot=1.6),
+        )
+    )
+    assert df["zone_call"].tolist() == [CHASE_UP, CHASE_RIGHT]
 
 
 def test_groups_pitch_types_and_drops_uncallable(raw_frame):

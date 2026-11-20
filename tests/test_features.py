@@ -118,7 +118,7 @@ def test_favorite_pitch_baseline():
     pitch_call, zone_call = baseline.predict(df)
     # no history in game 1, so the league favorite. game 2 knows he leaned on the slider
     assert pitch_call.tolist() == ["fastball"] * 3 + ["slider"] * 2
-    assert zone_call.tolist() == ["5"] * 3 + ["chase"] * 2
+    assert zone_call.tolist() == ["5"] * 3 + ["chase_down"] * 2
     scores = score(df, pitch_call, zone_call)
     assert scores.pitches == 5
     assert scores.pitch_call == pytest.approx(1 / 5)

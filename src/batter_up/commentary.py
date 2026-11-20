@@ -66,18 +66,25 @@ SCHEMA = {
     "additionalProperties": False,
 }
 
-ZONE_WORDS = {
-    "1": "up and to the catcher's left",
-    "2": "up, middle",
-    "3": "up and to the catcher's right",
-    "4": "middle height, catcher's left",
-    "5": "middle middle",
-    "6": "middle height, catcher's right",
-    "7": "down and to the catcher's left",
-    "8": "down, middle",
-    "9": "down and to the catcher's right",
-    "chase": "out of the zone",
-}
+
+def spot_words(zone: str, stands: str) -> str:
+    """where a pitch was, the way the booth says it. in and away depend on the batter:
+    from the catcher's view a righty stands on the left, so the left side is in"""
+    inside, away = ("left", "right") if stands == "R" else ("right", "left")
+    chases = {
+        "chase_up": "out of the zone, up",
+        "chase_down": "out of the zone, down",
+        f"chase_{inside}": "out of the zone, off the plate inside",
+        f"chase_{away}": "out of the zone, off the plate away",
+    }
+    if zone in chases:
+        return chases[zone]
+    n = int(zone) - 1
+    row = ("up", "", "down")[n // 3]
+    col = ("in", "", "away")[n % 3] if stands == "R" else ("away", "", "in")[n % 3]
+    if not row and not col:
+        return "middle middle, in the zone"
+    return " and ".join(x for x in (row, col) if x) + ", in the zone"
 
 
 def _runners(on: list[bool]) -> str:
@@ -104,10 +111,12 @@ def describe_at_bat(ab: dict, pitch_calls: list[str]) -> str:
         odds = dict(zip(pitch_calls, pitch["model"]["pitch"], strict=True))
         model_pitch, model_zone = pitch["model"]["call"]
         spin = f", {pitch['spin']} rpm" if pitch.get("spin") else ""
+        where = spot_words(pitch["zone"], b["stands"])
+        result = pitch["result"].replace("_", " ")
         lines.append(
             f"{pitch['n']}. count {pitch['count']}: {pitch['mph']} mph {pitch['name'].lower()}"
-            f"{spin}, {ZONE_WORDS[pitch['zone']]}, result: {pitch['result'].replace('_', ' ')}. "
-            f"model called {model_pitch}, {ZONE_WORDS[model_zone]} "
+            f"{spin}, {where}, result: {result}. "
+            f"model called {model_pitch}, {spot_words(model_zone, b['stands'])} "
             f"(gave {pitch['pitch']} a {odds[pitch['pitch']]:.0%} chance)"
         )
     lines += ["", f"how it ended (wrap only): {ab['des']}"]
