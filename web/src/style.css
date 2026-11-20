@@ -690,72 +690,20 @@ button.secondary.wide {
   letter-spacing: 0.01em;
 }
 
-/* the board */
-
-.board {
-  display: grid;
-  gap: 14px;
-}
-
-.board.calling {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto 1fr;
-  grid-template-areas:
-    'pitch spot'
-    'log spot';
-  align-items: start;
-}
-
-.board.calling .step:first-child {
-  grid-area: pitch;
-}
-
-.board.calling .step:nth-child(2) {
-  grid-area: spot;
-}
-
-.board.calling .so-far {
-  grid-area: log;
-}
-
-.step h3 .num {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--display);
-  font-size: 1rem;
-}
-
-.step.done h3 .num {
-  background: var(--good);
-  color: #062312;
-}
-
-.step.done h3 .num {
-  font-size: 0;
-}
-
-.step.done h3 .num::after {
-  content: '✓';
-  font-size: 0.9rem;
-}
-
 .pitches {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
 .pitch {
   display: grid;
-  grid-template-columns: 10px 6.5em 1fr 3em auto;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 9px;
+  font-size: 0.88rem;
   text-align: left;
   background: #0b1828;
   border: 1px solid var(--line-soft);
@@ -765,8 +713,17 @@ button.secondary.wide {
     border-color 0.12s;
 }
 
-.pitch:hover {
+.pitch:hover:not(:disabled) {
   border-color: var(--c);
+}
+
+.pitch:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.pitch.selected:disabled {
+  opacity: 1;
 }
 
 .pitch .swatch {
@@ -777,10 +734,12 @@ button.secondary.wide {
 }
 
 .pitch .name {
+  overflow: hidden;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.pitch .bar,
 .odds-row .bar {
   height: 6px;
   overflow: hidden;
@@ -788,7 +747,6 @@ button.secondary.wide {
   background: #1a2c40;
 }
 
-.pitch .bar i,
 .odds-row .bar i {
   display: block;
   height: 100%;
@@ -798,7 +756,7 @@ button.secondary.wide {
 
 .pitch .pct {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -814,22 +772,18 @@ button.secondary.wide {
 }
 
 .never {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
-.never .muted {
-  margin-right: 4px;
+.never summary {
+  cursor: pointer;
+  margin-bottom: 6px;
 }
 
 .pitch.mini {
-  display: inline-block;
-  width: auto;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 6px 10px;
   color: var(--muted);
   font-size: 0.8rem;
 }
@@ -1118,98 +1072,6 @@ button.secondary.wide {
 
 /* reveal */
 
-.board.reveal {
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  align-items: start;
-  margin-top: 14px;
-}
-
-.stage {
-  display: grid;
-  gap: 14px;
-}
-
-.replay {
-  position: relative;
-  overflow: hidden;
-  background: #050c15;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  min-height: 200px;
-}
-
-.replay-canvas {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-}
-
-.replay-flat {
-  display: none;
-  padding: 16px 16px 4px;
-}
-
-.replay.flat .replay-flat {
-  display: block;
-}
-
-.replay.flat .replay-again,
-.replay.flat .replay-legend {
-  display: none;
-}
-
-.replay:not(.ready):not(.flat) {
-  aspect-ratio: 4 / 3;
-}
-
-.replay-again {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  padding: 5px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #08121ecc;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.replay-legend {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #08121ecc;
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.replay-legend i {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.replay-legend i.you {
-  background: var(--you);
-}
-
-.replay-legend i.model {
-  margin-left: 6px;
-  background: var(--model);
-}
-
-.model-odds h3 {
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-
 .odds-row {
   display: grid;
   grid-template-columns: 6.5em 1fr 3em;
@@ -1238,7 +1100,11 @@ button.secondary.wide {
 
 .pitch-card {
   padding: 16px 18px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 18%, var(--panel)), var(--panel) 70%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--c) 18%, var(--panel)),
+    var(--panel) 70%
+  );
   border: 1px solid var(--line-soft);
   border-left: 5px solid var(--c);
   border-radius: 16px;
@@ -1432,6 +1298,403 @@ button.secondary.wide {
   margin-top: 4px;
 }
 
+/* the ballpark: one 3d view, behind the title card and front and center in the game */
+
+#app[data-phase='calling'],
+#app[data-phase='pitching'],
+#app[data-phase='reveal'] {
+  max-width: 1280px;
+}
+
+.stage-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* before three.js shows up, and if it never does: a night sky over grass */
+.stage {
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, #2a4c78 0%, transparent 70%),
+    linear-gradient(180deg, #0b1a2c 0%, #12263c 46%, #1d4d2c 46%, #173f24 100%);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* the title and final cards float over the ballpark */
+.backdrop.live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #08121e66 0%, #08121eaa 60%, #08121eee 100%);
+}
+
+.backdrop ~ .card {
+  background: linear-gradient(180deg, #142840e6, #0f1e30f0);
+  backdrop-filter: blur(6px);
+}
+
+.game-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.game-top .matchup {
+  flex: 1 1 420px;
+  margin-top: 0;
+}
+
+.arena {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  align-items: start;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.arena .stage {
+  position: relative;
+  overflow: hidden;
+  height: clamp(440px, calc(100vh - 190px), 760px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px -40px #000;
+}
+
+.zone-overlay {
+  position: absolute;
+  z-index: 2;
+}
+
+/* until the ballpark is there (or if it can't be), the zone sits in the middle */
+.stage:not(.live) .zone-overlay {
+  left: 50%;
+  top: 52%;
+  width: min(70%, 300px);
+  aspect-ratio: 3 / 3.4;
+  transform: translate(-50%, -50%);
+}
+
+.zone-overlay .zone-frame {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+/* over the ballpark the frame is see through, so you're tapping the real zone */
+.stage.live .zone-frame {
+  background: none;
+  border: 0;
+}
+
+.stage.live .chase-area {
+  border-radius: 0;
+  /* the chase areas are big, so their shading stays faint or it hides the field */
+  background: color-mix(in srgb, var(--accent) calc(var(--heat, 0%) * 0.45), transparent);
+}
+
+.stage.live .interactive .chase-area:hover {
+  background: #2f80ff30;
+}
+
+.stage.live .chase-area.selected {
+  background: #2f80ff66;
+}
+
+.stage.live .chase-area.truth {
+  background: #ffffff30;
+}
+
+.stage.live .chase-label {
+  color: #e6eef7cc;
+  text-shadow: 0 1px 3px #000;
+}
+
+.stage.live .seams line {
+  stroke: #ffffff40;
+}
+
+.stage.live .strike-zone {
+  border-color: #ffffffd9;
+  box-shadow:
+    0 0 0 1px #0006,
+    0 0 24px #0008;
+}
+
+.stage.live .cell {
+  border-color: #ffffff30;
+  background: color-mix(in srgb, var(--accent) calc(var(--heat, 0%) * 0.8), #08121e33);
+}
+
+.stage.live .interactive .cell:hover {
+  background: #2f80ff55;
+}
+
+.stage.live .cell.selected {
+  background: #2f80ffa8;
+}
+
+.stage.live .plate,
+.stage.live .batter-box {
+  display: none;
+}
+
+/* while it's in the air, the zone steps back so you can watch the ball */
+.arena.pitching .stage.live .zone-overlay {
+  opacity: 0.75;
+}
+
+.arena.pitching .zone-overlay,
+.arena.reveal .zone-overlay {
+  pointer-events: none;
+}
+
+.interactive .cell,
+.interactive .chase-area {
+  cursor: pointer;
+}
+
+.stage-hint,
+.stage-toast,
+.stage-flash,
+.stage-replay,
+.stage-legend {
+  position: absolute;
+  z-index: 3;
+  margin: 0;
+}
+
+.stage-hint {
+  left: 50%;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 18px;
+  transform: translateX(-50%);
+  border: 1px solid #ffffff22;
+  border-radius: 14px;
+  background: #08121ed0;
+  text-align: center;
+  white-space: nowrap;
+  animation: rise 0.4s ease-out both;
+}
+
+.stage-hint span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.stage-toast {
+  left: 50%;
+  top: 16px;
+  padding: 6px 18px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #08121ed0;
+  font-family: var(--display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.stage-flash {
+  left: 50%;
+  top: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 20px 8px;
+  transform: translateX(-50%);
+  border-radius: 14px;
+  background: #08121ee0;
+  border: 1px solid var(--line);
+  font-family: var(--display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.stage-flash b {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.stage-flash.perfect {
+  border-color: var(--good);
+  box-shadow: 0 0 40px -6px var(--good);
+}
+
+.stage-flash.perfect b {
+  color: var(--good);
+}
+
+.stage-flash.part b {
+  color: var(--part);
+}
+
+.stage-flash.miss b {
+  color: var(--bad);
+}
+
+.stage-replay {
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #08121ecc;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.stage-legend {
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #08121ecc;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.stage-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--you);
+}
+
+.stage-legend i.model {
+  margin-left: 6px;
+  background: var(--model);
+}
+
+.stage:not(.live) .stage-replay {
+  display: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.7);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-hint,
+  .stage-toast,
+  .stage-flash {
+    animation: none;
+  }
+}
+
+/* the panel beside the ballpark */
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side .ask {
+  margin: 2px 0 12px;
+}
+
+.side .eyebrow {
+  margin-bottom: 2px;
+}
+
+.your-call {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #0b1828;
+  border: 1px solid var(--line-soft);
+  font-weight: 650;
+}
+
+.your-call small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.call-pitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.call-pitch::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.call-spot::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--muted);
+}
+
+.panel.call.locked .pitch-pick {
+  opacity: 0.6;
+}
+
+.side .call-bar .primary {
+  margin-top: 14px;
+}
+
+.model-odds summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.model-odds[open] summary {
+  margin-bottom: 8px;
+}
+
 /* phones */
 
 @media (max-width: 760px) {
@@ -1480,45 +1743,6 @@ button.secondary.wide {
     margin: 16px 0 10px;
   }
 
-  .board.calling,
-  .board.reveal {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-    grid-template-areas: none;
-  }
-
-  /* on a phone the result comes right under the replay, the model's odds after */
-  .board.reveal .stage {
-    display: contents;
-  }
-
-  .board.reveal .result {
-    order: 1;
-  }
-
-  .board.reveal .model-odds {
-    order: 2;
-  }
-
-  /* what's been thrown is context for the call, so it goes first on a phone */
-  .board.calling .so-far {
-    order: -1;
-  }
-
-  .board.calling .so-far.empty {
-    display: none;
-  }
-
-  .step.spot {
-    scroll-margin-top: 12px;
-  }
-
-  .board.calling .step:first-child,
-  .board.calling .step:nth-child(2),
-  .board.calling .so-far {
-    grid-area: auto;
-  }
-
   .panel {
     padding: 14px;
   }
@@ -1557,28 +1781,6 @@ button.secondary.wide {
   }
 }
 
-.replay-batter {
-  position: absolute;
-  bottom: 10px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: #08121ecc;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.replay-batter.left {
-  left: 10px;
-}
-
-.replay-batter.right {
-  right: 10px;
-}
-
-.replay.flat .replay-batter {
-  display: none;
-}
-
 .keys {
   margin: 10px 0 0;
   color: var(--muted);
@@ -1592,6 +1794,55 @@ button.secondary.wide {
 
 @media (hover: none) {
   .keys {
+    display: none;
+  }
+}
+
+/* phones: the ballpark on top, the panel under it, the button under your thumb */
+
+@media (max-width: 760px) {
+  .game-top {
+    gap: 8px;
+  }
+
+  .game-top .matchup {
+    flex-basis: 100%;
+  }
+
+  .arena {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .arena .stage {
+    height: auto;
+    aspect-ratio: 4 / 5;
+    max-height: 72vh;
+    min-height: 360px;
+    margin: 0 -12px;
+    border-radius: 0;
+    border-width: 1px 0;
+  }
+
+  .stage-hint {
+    top: 10px;
+  }
+
+  .stage-hint span {
+    display: none;
+  }
+
+  .stage-flash {
+    top: 10px;
+    font-size: 1.15rem;
+  }
+
+  .stage-flash b {
+    font-size: 1.8rem;
+  }
+
+  .side .so-far.empty {
     display: none;
   }
 }
