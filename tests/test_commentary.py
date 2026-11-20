@@ -18,9 +18,9 @@ def pitch(n, count, call, zone, result="ball"):
         "spin": 2300,
         "result": result,
         "model": {
-            "call": ["fastball", "chase"],
+            "call": ["fastball", "chase_left"],
             "pitch": [1 / len(PITCH_CALLS)] * len(PITCH_CALLS),
-            "zone": [0.1] * 10,
+            "zone": [1 / 13] * 13,
         },
     }
 
@@ -42,7 +42,7 @@ def payload():
         "des": "SF Bat 4 strikes out swinging.",
         "pitches": [
             pitch(1, "0-0", "fastball", "2", "called_strike"),
-            pitch(2, "0-1", "slider", "chase", "swinging_strike"),
+            pitch(2, "0-1", "slider", "chase_right", "swinging_strike"),
         ],
     }
     return {"pitchCalls": PITCH_CALLS, "atBats": [ab]}
@@ -52,7 +52,9 @@ def test_prompt_has_the_situation_and_every_pitch(payload):
     text = commentary.describe_at_bat(payload["atBats"][0], PITCH_CALLS)
     assert "top of the 7, 2 out, runners on first and third" in text
     assert "score LAD 3, SF 2" in text
-    assert "1. count 0-0: 95.1 mph fastball, 2300 rpm, up, middle, result: called strike" in text
+    assert (
+        "1. count 0-0: 95.1 mph fastball, 2300 rpm, up, in the zone, result: called strike" in text
+    )
     assert "2. count 0-1" in text
     assert "how it ended (wrap only)" in text
 
@@ -142,3 +144,12 @@ def test_check_finds_missing_short_and_extra_entries(payload):
     assert "20260003-54: no wrap" in problems
     assert "nope: not an at-bat in atbats.json" in problems
     assert commentary.check(payload, {"atBats": {}}) == ["20260003-54: no lines"]
+
+
+def test_spots_are_in_and_away_for_the_batter():
+    assert commentary.spot_words("1", "R") == "up and in, in the zone"
+    assert commentary.spot_words("1", "L") == "up and away, in the zone"
+    assert commentary.spot_words("5", "L") == "middle middle, in the zone"
+    assert commentary.spot_words("chase_right", "R") == "out of the zone, off the plate away"
+    assert commentary.spot_words("chase_right", "L") == "out of the zone, off the plate inside"
+    assert commentary.spot_words("chase_down", "R") == "out of the zone, down"

@@ -846,21 +846,93 @@ button.secondary.wide {
   aspect-ratio: 3 / 3.4;
   margin: 0 auto;
   border-radius: 14px;
-  background:
-    repeating-linear-gradient(135deg, transparent 0 9px, #ffffff06 9px 10px),
-    color-mix(in srgb, var(--accent) var(--chase-heat, 0%), #08131f);
+  background: repeating-linear-gradient(135deg, transparent 0 9px, #ffffff06 9px 10px), #08131f;
   border: 1px dashed var(--line);
 }
 
-.zone-frame.selected {
-  border: 2px solid var(--accent);
-  background:
-    repeating-linear-gradient(135deg, transparent 0 9px, #2f80ff22 9px 10px),
-    #2f80ff1a;
+.chase-area {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) var(--heat, 0%), transparent);
+  transition: background 0.12s;
 }
 
-.zone-frame.truth {
-  border: 2px solid #fff;
+.interactive .chase-area:hover {
+  background: #2f80ff2e;
+}
+
+.chase-area.selected {
+  background: #2f80ff70;
+}
+
+.chase-area.truth {
+  background: #ffffff26;
+}
+
+.chase-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.chase-area.selected .chase-label,
+.chase-area.truth .chase-label {
+  color: #fff;
+}
+
+.chase-label .badges {
+  position: static;
+  align-items: center;
+}
+
+.chase_up .chase-label {
+  top: 7%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.chase_down .chase-label {
+  top: 77%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.chase_left .chase-label {
+  top: 50%;
+  left: 11%;
+  transform: translate(-50%, -50%);
+}
+
+.chase_right .chase-label {
+  top: 50%;
+  left: 89%;
+  transform: translate(-50%, -50%);
+}
+
+.seams {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.seams line {
+  stroke: #d5e0eb30;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
 }
 
 .strike-zone {
@@ -872,40 +944,6 @@ button.secondary.wide {
   grid-template-rows: repeat(3, 1fr);
   border: 2px solid #d5e0eb;
   border-radius: 2px;
-}
-
-.axis {
-  position: absolute;
-  color: var(--muted);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  pointer-events: none;
-}
-
-.axis.up {
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.axis.down {
-  top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.axis.left {
-  right: calc(100% + 6px);
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.axis.right {
-  left: calc(100% + 6px);
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 .cell {
@@ -938,17 +976,6 @@ button.secondary.wide {
   align-items: flex-start;
   gap: 2px;
   pointer-events: none;
-}
-
-.chase-badges {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-}
-
-.chase-badges .badges {
-  position: static;
-  flex-direction: row;
 }
 
 .badge {
@@ -1031,34 +1058,6 @@ button.secondary.wide {
   background: var(--c);
   border: 2px solid #fff;
   box-shadow: 0 0 18px var(--c);
-}
-
-.chase-button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(100%, 300px);
-  margin: 12px auto 0;
-  padding: 10px 12px;
-  text-align: left;
-  background: #0b1828;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-}
-
-.chase-button span {
-  flex: 1;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.chase-button.selected {
-  border: 1px solid var(--accent);
-  background: #2f80ff26;
-}
-
-.chase-button.selected span {
-  color: var(--fg);
 }
 
 /* this at-bat so far */
@@ -1578,4 +1577,21 @@ button.secondary.wide {
 
 .replay.flat .replay-batter {
   display: none;
+}
+
+.keys {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.keys kbd {
+  margin: 0 1px;
+}
+
+@media (hover: none) {
+  .keys {
+    display: none;
+  }
 }

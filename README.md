@@ -61,7 +61,7 @@ npm test
 
 ## the model
 
-two lightgbm trees. the first reads the situation (count, outs, runners, score, handedness, the pitches already thrown this at-bat and this game, and his mix in every earlier game, overall and against this side) and gives odds for each pitch type. the second is told the pitch type and gives odds for each of the ten zones, because where a slider goes isn't where a fastball goes. multiply them and you get odds for every pitch and zone pair, and the model's call is the likeliest one.
+two lightgbm trees. the first reads the situation (count, outs, runners, score, handedness, the pitches already thrown this at-bat and this game, and his mix in every earlier game, overall and against this side) and gives odds for each pitch type. the second is told the pitch type and gives odds for each of the thirteen spots, the nine boxes of the zone and the four ways to miss it (a chase up, down, or off either side of the plate), because where a slider goes isn't where a fastball goes. a chase is named for the edge the ball missed by the most feet. with one big "chase" bucket the model called chase on every pitch, since about half of all pitches miss the zone; split four ways it has to pick a side. multiply them and you get odds for every pitch and zone pair. the model calls its likeliest pitch, then that pitch's likeliest spot. it doesn't call the likeliest pair, because then a pitch that always lands in the same spot, like a slider in the dirt, beats a likelier pitch whose spots are spread out, and the pitch call gets worse.
 
 it's trained on every season before the test season, with the last of those held out to decide when to stop adding trees, then refit on all of them. the test season is never touched until the score. `train` prints the model next to the favorite pitch baseline, overall, for dodgers pitchers, and count by count, and saves it all to `data/models/metrics.json`. the title screen shows the headline number from it.
 
@@ -71,7 +71,7 @@ it's trained on every season before the test season, with the last of those held
 
 ## the game
 
-plain typescript, no framework. `web/src/game.ts` is the rules (a session walks pitch by pitch through a few at-bats, and you and the model are graded the same way: 2 for the pitch type, 1 for the zone, 1 more for both) and is tested with vitest. the page re-renders from one state object on every click. each pitch is two steps: pick the pitch (his mix against that side of the plate is right on the buttons) and pick the spot. the zone is drawn from the catcher's view with in and away marked for the batter, the box is the strike zone and anything off it is a chase, and the actual pitch lands at its real plate_x and plate_z. after the pitch a small table lines up what was thrown, what you called and what the model called.
+plain typescript, no framework. `web/src/game.ts` is the rules (a session walks pitch by pitch through a few at-bats, and you and the model are graded the same way: 2 for the pitch type, 1 for the zone, 1 more for both) and is tested with vitest. the page re-renders from one state object on every click. each pitch is two steps: pick the pitch (his mix against that side of the plate is right on the buttons) and pick the spot. the zone is drawn from the catcher's view with in and away marked for the batter, the box is the strike zone and the frame around it is cut into the four chase areas, and the actual pitch lands at its real plate_x and plate_z. after the pitch a small table lines up what was thrown, what you called and what the model called.
 
 after each call the pitch replays in three.js from just behind the catcher, once at real speed and once slowed down with its path drawn. statcast describes every pitch as nine numbers, a velocity and an acceleration at 50 feet from the plate, so the path is just constant acceleration, solved backwards from where the ball crossed the plate (`web/src/flight.ts`, tested against the plate location). three.js loads in the background once you start playing, so the title screen stays small, and the reveal falls back to the 2d zone if webgl doesn't work. fonts (inter and barlow condensed) are bundled with the site, nothing loads from a font cdn.
 
@@ -86,7 +86,7 @@ me 31 · model 27
 ryzee34.github.io/project-batter-up
 ```
 
-keyboard works too: f s c l u h p for the pitch, 1 to 9 for the zone, 0 for a chase, enter to call it.
+keyboard works too: f s c l u h p for the pitch, 1 to 9 for the zone, the arrow keys for a chase, enter to call it.
 
 ## the booth
 
