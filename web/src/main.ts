@@ -8,7 +8,7 @@ import { shareCard } from './card'
 import { dailyAtBats, dayKey, dayNumber, result, shareText, streak, type Result } from './daily'
 import { loadResults, saveResult } from './store'
 import { PITCHES, PITCH_ORDER, escape, ordinal, pct, spot } from './labels'
-import type { Replay } from './replay'
+import type { Stage } from './stage'
 import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
 import { zoneGrid } from './zone'
 
@@ -21,7 +21,8 @@ const ARROWS: Record<string, Zone> = {
   ArrowRight: 'chase_right',
 }
 
-type Phase = 'title' | 'calling' | 'reveal' | 'done'
+/** calling: you're picking. pitching: the windup and the throw. reveal: how you did */
+type Phase = 'title' | 'calling' | 'pitching' | 'reveal' | 'done'
 
 interface State {
   data: GameData
@@ -37,15 +38,74 @@ interface State {
 
 const app = document.querySelector<HTMLElement>('#app')!
 let state: State
-// one webgl view for the whole visit, moved into each reveal. three.js starts loading in
-// the background once you start playing, so the title screen stays small
-let replay: Replay | null = null
-let replayBroken = false
-let replayModule: Promise<typeof import('./replay')> | null = null
 
-function loadReplay(): Promise<typeof import('./replay')> {
-  replayModule ??= import('./replay')
-  return replayModule
+// the ballpark is one webgl view for the whole visit. three.js loads in the background
+// after the first paint, then the canvas moves into whichever screen is up: behind the
+// title card, or front and center while you play. without webgl the game still works,
+// with a flat zone instead
+let stage: Stage | null = null
+let stageBroken = false
+let stageLoading: Promise<Stage | null> | null = null
+/** which pitch the stage is set up for, so a re-render doesn't reset it */
+let staged = ''
+
+function loadStage(): Promise<Stage | null> {
+  stageLoading ??= import('./stage')
+    .then(({ Stage, webglAvailable }) => {
+      if (!webglAvailable()) throw new Error('no webgl here')
+      stage = new Stage()
+      stage.onLayout = placeZone
+      return stage
+    })
+    .catch((err) => {
+      console.warn('the 3d ballpark is off:', err)
+      stageBroken = true
+      document.querySelectorAll('.stage').forEach((el) => el.classList.add('flat'))
+      return null
+    })
+  return stageLoading
+}
+
+function mountStage(): void {
+  const host = document.querySelector<HTMLElement>('#stage')
+  if (!host || stageBroken) return
+  void loadStage().then((s) => {
+    if (!s || !host.isConnected) return
+    if (s.canvas.parentElement !== host) host.prepend(s.canvas)
+    host.classList.add('live')
+    syncStage(s)
+    placeZone()
+  })
+}
+
+/** set the players and the zone for whatever is on screen */
+function syncStage(s: Stage): void {
+  const session = state.session
+  if (!session || state.phase === 'done') {
+    // the title and final screens: someone idling on the mound
+    const ab = session?.atBat ?? state.data.atBats[0]
+    const key = `idle:${ab.id}`
+    if (staged !== key) s.ready(ab.pitches[0], ab.pitcher.throws, ab.batter.stands)
+    staged = key
+    return
+  }
+  const ab = session.atBat
+  const key = `${ab.id}:${session.pitch.n}`
+  if (state.phase === 'calling' && staged !== key) {
+    s.ready(session.pitch, ab.pitcher.throws, ab.batter.stands)
+    staged = key
+  }
+}
+
+/** line the clickable zone up with the one in the ballpark */
+function placeZone(): void {
+  const el = document.querySelector<HTMLElement>('.zone-overlay')
+  if (!el || !stage || !el.isConnected || stage.canvas.parentElement !== el.parentElement) return
+  const r = stage.frame()
+  el.style.left = `${r.left}px`
+  el.style.top = `${r.top}px`
+  el.style.width = `${r.width}px`
+  el.style.height = `${r.height}px`
 }
 
 async function load<T>(name: string): Promise<T> {
@@ -87,37 +147,20 @@ function render(): void {
     : ''
   const body = {
     title: renderTitle,
-    calling: renderCalling,
-    reveal: renderReveal,
+    calling: renderGame,
+    pitching: renderGame,
+    reveal: renderGame,
     done: renderDone,
   }[state.phase]()
   app.dataset.phase = state.phase
-  app.innerHTML = banner + body
-  if (state.phase === 'reveal') void mountReplay()
-  if (state.phase === 'calling' && !replayBroken) void loadReplay().catch(() => undefined)
-}
-
-async function mountReplay(): Promise<void> {
-  const host = document.querySelector<HTMLElement>('#replay')
-  const result = state.last
-  if (!host || !result || replayBroken) return
-  try {
-    if (!replay) {
-      const { Replay, webglAvailable } = await loadReplay()
-      if (!webglAvailable()) throw new Error('no webgl here')
-      replay = new Replay()
-    }
-    if (!host.isConnected || state.last !== result) return
-    host.prepend(replay.canvas)
-    host.classList.add('ready')
-    replay.play(result.pitch, {
-      you: state.pick.zone,
-      model: result.pitch.model.call[1],
-    })
-  } catch (err) {
-    console.warn('pitch replay is off:', err)
-    replayBroken = true
-    host.classList.add('flat')
+  const backdrop = state.phase === 'title' || state.phase === 'done'
+  app.innerHTML = (backdrop ? '<div class="backdrop stage" id="stage"></div>' : '') + banner + body
+  if (stageBroken) document.querySelectorAll('.stage').forEach((el) => el.classList.add('flat'))
+  if (stage && !stageBroken) {
+    mountStage()
+  } else if (!stageBroken) {
+    // let the first screen paint before pulling in three.js
+    requestAnimationFrame(() => setTimeout(mountStage, 50))
   }
 }
 
@@ -137,9 +180,9 @@ function renderTitle(): string {
       <h1 class="wordmark">batter up</h1>
       <p class="lede">call the next pitch in real at-bats, before it's thrown. a model calls it too. try to beat it.</p>
       <ol class="how">
-        <li><b>read the situation</b><span>count, runners, score, and what he's thrown so far</span></li>
-        <li><b>call the pitch</b><span>pick what's coming and where it crosses the plate</span></li>
-        <li><b>watch it come in</b><span>see the real pitch, with the model's call next to yours</span></li>
+        <li><b>tap where it's going</b><span>right on the zone, or around it for a chase. his go-to pitch is already picked, change it if you know better</span></li>
+        <li><b>hit ready</b><span>he winds up and throws the real pitch, on its real path</span></li>
+        <li><b>see who called it</b><span>you, the model, or neither</span></li>
       </ol>
       ${stats}
       <p class="rules"><span><b>2</b> right pitch</span><span><b>1</b> right spot</span><span><b>+1</b> both</span><span class="muted">${PERFECT} is perfect</span></p>
@@ -253,33 +296,32 @@ function mixFor(ab: AtBat): Partial<Record<PitchCall, number>> {
   return Object.keys(ab.pitcher.mixVsSide).length ? ab.pitcher.mixVsSide : ab.pitcher.mix
 }
 
-function pitchPicker(ab: AtBat, selected?: PitchCall): string {
+/** his go-to pitch, which your call starts on so all you have to pick is the spot */
+function favorite(ab: AtBat): PitchCall {
+  const mix = mixFor(ab)
+  const thrown = PITCH_ORDER.filter((c) => (mix[c] ?? 0) > 0)
+  if (!thrown.length) return 'fastball'
+  return thrown.reduce((a, b) => (mix[b]! > mix[a]! ? b : a))
+}
+
+function pitchPicker(ab: AtBat, selected: PitchCall | undefined, locked: boolean): string {
   const mix = mixFor(ab)
   const side = ab.batter.stands === 'L' ? 'lefties' : 'righties'
   const thrown = PITCH_ORDER.filter((c) => (mix[c] ?? 0) > 0).sort((a, b) => mix[b]! - mix[a]!)
-  const never = PITCH_ORDER.filter((c) => !thrown.includes(c))
-  const top = Math.max(...thrown.map((c) => mix[c]!), 0.01)
-  const row = (c: PitchCall) => `
-    <button class="pitch ${selected === c ? 'selected' : ''}" data-pitch="${c}"
-      style="--c:${PITCHES[c].color}" aria-pressed="${selected === c}">
-      <span class="swatch"></span>
-      <span class="name">${c}</span>
-      <span class="bar"><i style="width:${((mix[c] ?? 0) / top) * 100}%"></i></span>
-      <span class="pct">${pct(mix[c] ?? 0)}</span>
+  const shown = thrown.length ? thrown : PITCH_ORDER
+  const never = PITCH_ORDER.filter((c) => !shown.includes(c))
+  const chip = (c: PitchCall, mini = false) => `
+    <button class="pitch ${mini ? 'mini' : ''} ${selected === c ? 'selected' : ''}" data-pitch="${c}"
+      style="--c:${PITCHES[c].color}" aria-pressed="${selected === c}" ${locked ? 'disabled' : ''}>
+      <span class="swatch"></span><span class="name">${c}</span>
+      ${mini ? '' : `<span class="pct">${pct(mix[c] ?? 0)}</span>`}
       <kbd>${PITCHES[c].key}</kbd>
     </button>`
   const rare = never.length
-    ? `<div class="never"><span class="muted small">never thrown to ${side}</span>${never
-        .map(
-          (c) => `<button class="pitch mini ${selected === c ? 'selected' : ''}" data-pitch="${c}"
-            style="--c:${PITCHES[c].color}" aria-pressed="${selected === c}">${c}</button>`,
-        )
-        .join('')}</div>`
+    ? `<details class="never"><summary>${never.length} he's never thrown to ${side}</summary>
+        <div class="pitches">${never.map((c) => chip(c, true)).join('')}</div></details>`
     : ''
-  const note = thrown.length
-    ? `how often he's thrown each one to ${side} before today`
-    : 'no history yet, this is the first time we see him'
-  return `<p class="note">${note}</p><div class="pitches">${thrown.map(row).join('')}</div>${rare}`
+  return `<div class="pitches">${shown.map((c) => chip(c)).join('')}</div>${rare}`
 }
 
 function pitchLog(ab: AtBat, history: Pitch[], results: PitchResult[]): string {
@@ -301,46 +343,6 @@ function pitchLog(ab: AtBat, history: Pitch[], results: PitchResult[]): string {
 function square(points: number): string {
   return `<i class="sq ${points === PERFECT ? 'full' : points > 0 ? 'part' : 'none'}"></i>`
 }
-
-function renderCalling(): string {
-  const s = state.session!
-  const ab = s.atBat
-  const { pitch, zone } = state.pick
-  const stands = ab.batter.stands
-  const callLabel =
-    pitch && zone
-      ? `call it: ${pitch}, ${spot(zone, stands)}`
-      : pitch
-        ? 'now pick a spot'
-        : zone
-          ? 'now pick a pitch'
-          : 'pick a pitch and a spot'
-  return `
-    ${scorebug(ab, s.pitch)}
-    ${matchup(ab)}
-    <h2 class="ask">pitch ${s.pitch.n}, ${s.pitch.count} count. what's coming?</h2>
-    <section class="board calling">
-      <div class="panel step ${pitch ? 'done' : ''}">
-        <h3><span class="num">1</span> pick the pitch ${pitch ? `<em>${pitch}</em>` : ''}</h3>
-        ${pitchPicker(ab, pitch)}
-      </div>
-      <div class="panel step spot ${zone ? 'done' : ''}">
-        <h3><span class="num">2</span> pick the spot ${zone ? `<em>${spot(zone, stands)}</em>` : ''}</h3>
-        <p class="note">you're behind the catcher. tap a box in the zone, or the side it misses on for a chase</p>
-        ${zoneGrid({ selected: zone, history: s.history, stands }, true)}
-        <p class="keys"><kbd>1</kbd>–<kbd>9</kbd> the zone <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> a chase</p>
-      </div>
-      <div class="panel so-far ${s.history.length ? '' : 'empty'}">
-        <h3>this at-bat so far</h3>
-        ${pitchLog(ab, s.history, s.results[s.atBatIndex])}
-      </div>
-    </section>
-    <div class="call-bar">
-      <button class="primary" data-action="call" ${pitch && zone ? '' : 'disabled'}>${callLabel}</button>
-    </div>`
-}
-
-// reveal
 
 function compare(r: PitchResult, you: Guess, model: Guess, stands: 'L' | 'R'): string {
   const p = r.pitch
@@ -388,7 +390,109 @@ function odds(p: Pitch): string {
     .join('')
 }
 
-function renderReveal(): string {
+// the game: the ballpark with the zone laid over it, and a panel beside it that changes
+// with the phase. you call it, watch it, then see how you did, all on one screen
+
+function renderGame(): string {
+  const s = state.session!
+  const ab = s.atBat
+  const reveal = state.phase === 'reveal'
+  const p = reveal ? state.last!.pitch : s.pitch
+  return `
+    <div class="game-top">
+      ${scorebug(ab, p)}
+      ${matchup(ab)}
+    </div>
+    <section class="arena ${state.phase}">
+      <div class="stage ${stage ? 'live' : ''}" id="stage">
+        <div class="zone-overlay">${overlay()}</div>
+        ${stageHud()}
+      </div>
+      <aside class="side">${reveal ? revealPanel() : callPanel()}</aside>
+    </section>`
+}
+
+function overlay(): string {
+  const s = state.session!
+  const stands = s.atBat.batter.stands
+  if (state.phase === 'reveal') {
+    const r = state.last!
+    return zoneGrid(
+      {
+        you: state.pick.zone,
+        model: r.pitch.model.call[1],
+        heat: r.pitch.model.zone,
+        pitch: r.pitch,
+        history: s.history,
+        stands,
+      },
+      false,
+    )
+  }
+  return zoneGrid(
+    {
+      selected: state.pick.zone,
+      you: state.phase === 'pitching' ? state.pick.zone : undefined,
+      history: s.history,
+      stands,
+    },
+    state.phase === 'calling',
+  )
+}
+
+function stageHud(): string {
+  if (state.phase === 'calling') {
+    return state.pick.zone
+      ? ''
+      : `<p class="stage-hint"><b>tap where it crosses the plate</b><span>in the zone, or around it for a chase</span></p>`
+  }
+  if (state.phase === 'pitching') {
+    return `<p class="stage-toast">here it comes</p>`
+  }
+  const r = state.last!
+  const grade = r.you.points === PERFECT ? 'perfect' : r.you.points ? 'part' : 'miss'
+  return `
+    <p class="stage-flash ${grade}"><b>+${r.you.points}</b>${verdictLine(r.you)}</p>
+    <button class="stage-replay" data-action="replay" aria-label="replay the pitch">↻ replay</button>
+    <span class="stage-legend"><i class="you"></i>you <i class="model"></i>model</span>`
+}
+
+function callPanel(): string {
+  const s = state.session!
+  const ab = s.atBat
+  const stands = ab.batter.stands
+  const { pitch, zone } = state.pick
+  const locked = state.phase === 'pitching'
+  const call = pitch
+    ? `<span class="call-pitch" style="--c:${PITCHES[pitch].color}">${pitch}</span>`
+    : '<span class="muted">pick a pitch</span>'
+  const where = zone
+    ? `<span class="call-spot">${spot(zone, stands)}</span>`
+    : '<span class="muted">tap the zone</span>'
+  const button = locked
+    ? `<button class="primary ready" disabled>watch the pitch…</button>`
+    : pitch && zone
+      ? `<button class="primary ready" data-action="call">ready <small>${pitch} · ${spot(zone, stands)}</small></button>`
+      : `<button class="primary ready" disabled>tap a spot first</button>`
+  return `
+    <div class="panel call ${locked ? 'locked' : ''}">
+      <p class="eyebrow">pitch ${s.pitch.n} · ${s.pitch.count} count</p>
+      <h2 class="ask">what's coming?</h2>
+      <p class="your-call"><small>your call</small>${call}${where}</p>
+      <div class="pitch-pick">
+        <p class="note">his go-to is picked. switch if you know better</p>
+        ${pitchPicker(ab, pitch, locked)}
+      </div>
+      <div class="call-bar">${button}</div>
+      <p class="keys"><kbd>1</kbd>–<kbd>9</kbd> zone <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> chase <kbd>enter</kbd> ready</p>
+    </div>
+    <div class="panel so-far ${s.history.length ? '' : 'empty'}">
+      <h3>this at-bat so far</h3>
+      ${pitchLog(ab, s.history, s.results[s.atBatIndex])}
+    </div>`
+}
+
+function revealPanel(): string {
   const s = state.session!
   const r = state.last!
   const p = r.pitch
@@ -406,43 +510,23 @@ function renderReveal(): string {
     ? `<div class="ending"><p class="eyebrow">at-bat over · ${escape(ab.result)}</p><p>${escape(ab.des)}</p>${wrap}</div>`
     : ''
   const nextLabel = s.done ? 'see how you did' : s.atBatDone ? 'next at-bat' : 'next pitch'
-  const flat = zoneGrid(
-    { you: you.zone, model: model.zone, heat: p.model.zone, pitch: p, history: s.history, stands },
-    false,
-  )
   return `
-    ${scorebug(ab, p)}
-    ${matchup(ab)}
-    <section class="board reveal">
-      <div class="stage">
-        <div class="replay ${replayBroken ? 'flat' : ''}" id="replay">
-          <button class="replay-again" data-action="replay" aria-label="replay the pitch">↻ replay</button>
-          <span class="replay-legend"><i class="you"></i>your spot <i class="model"></i>model's spot</span>
-          <span class="replay-batter ${stands === 'R' ? 'left' : 'right'}">${stands === 'R' ? 'righty' : 'lefty'} batter</span>
-          <div class="replay-flat">${flat}<p class="muted small center">shading is where the model thought it was going</p></div>
-        </div>
-        <div class="panel model-odds">
-          <h3>what the model saw coming</h3>
-          ${odds(p)}
-        </div>
+    <div class="panel result">
+      <div class="pitch-card" style="--c:${PITCHES[p.pitch].color}">
+        <p class="eyebrow">pitch ${p.n} · ${p.count} count</p>
+        <h2>${p.mph} <small>mph</small> ${escape(p.name.toLowerCase())}</h2>
+        <p>${spot(p.zone, stands)} · <b>${describe(p.result)}</b>${p.spin ? ` · ${p.spin} rpm` : ''}</p>
       </div>
-      <div class="result">
-        <div class="pitch-card" style="--c:${PITCHES[p.pitch].color}">
-          <p class="eyebrow">pitch ${p.n} · ${p.count} count</p>
-          <h2>${p.mph} <small>mph</small> ${escape(p.name.toLowerCase())}</h2>
-          <p>${spot(p.zone, stands)} · <b>${describe(p.result)}</b>${p.spin ? ` · ${p.spin} rpm` : ''}</p>
-        </div>
-        <p class="verdict ${r.you.points === PERFECT ? 'perfect' : r.you.points ? 'part' : 'miss'}">
-          <b>+${r.you.points}</b> ${verdictLine(r.you)}
-        </p>
-        ${compare(r, you, model, stands)}
-        ${booth}
-        ${ending}
-        <div class="call-bar">
-          <button class="primary" data-action="next">${nextLabel}</button>
-        </div>
-      </div>
-    </section>`
+      ${compare(r, you, model, stands)}
+      ${booth}
+      ${ending}
+      <details class="model-odds">
+        <summary>what the model saw coming</summary>
+        ${odds(p)}
+        <p class="muted small">shading on the zone is where it thought the pitch would go</p>
+      </details>
+      <div class="call-bar"><button class="primary" data-action="next">${nextLabel}</button></div>
+    </div>`
 }
 
 // done
@@ -451,7 +535,11 @@ function renderDone(): string {
   const s = state.session!
   const t = s.totals()
   const won =
-    t.you > t.model ? 'you beat the model' : t.you === t.model ? 'dead even' : 'the model wins this one'
+    t.you > t.model
+      ? 'you beat the model'
+      : t.you === t.model
+        ? 'dead even'
+        : 'the model wins this one'
   const rows = s.atBats
     .map(
       (ab, i) => `<li>
@@ -486,7 +574,7 @@ function startGame(mode: 'daily' | 'practice'): void {
       : deal(state.data.atBats, AT_BATS_PER_GAME, mulberry32(Math.floor(Math.random() * 2 ** 31)))
   state.session = new Session(atBats)
   state.phase = 'calling'
-  state.pick = {}
+  state.pick = { pitch: favorite(state.session.atBat) }
   state.last = null
   render()
   window.scrollTo({ top: 0 })
@@ -494,13 +582,8 @@ function startGame(mode: 'daily' | 'practice'): void {
 
 function choosePitch(pitch: PitchCall): void {
   if (state.phase !== 'calling') return
-  const first = !state.pick.pitch && !state.pick.zone
   state.pick.pitch = pitch
   render()
-  // on a phone the zone is below the fold, so bring it up after the first pick
-  if (first && matchMedia('(max-width: 760px)').matches) {
-    document.querySelector('.step.spot')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 }
 
 function chooseZone(zone: Zone): void {
@@ -509,23 +592,40 @@ function chooseZone(zone: Zone): void {
   render()
 }
 
+/** ready: the call is in, so he throws it. the result shows once the ball gets there */
 function lockIn(): void {
   const { pitch, zone } = state.pick
   if (state.phase !== 'calling' || !pitch || !zone) return
-  state.last = state.session!.call({ pitch, zone })
-  state.phase = 'reveal'
+  const s = state.session!
+  const ab = s.atBat
+  state.last = s.call({ pitch, zone })
+  if (!stage || stageBroken) {
+    state.phase = 'reveal'
+    render()
+    return
+  }
+  state.phase = 'pitching'
   render()
-  window.scrollTo({ top: 0 })
+  const result = state.last
+  const reveal = () => {
+    if (state.phase !== 'pitching' || state.last !== result) return
+    state.phase = 'reveal'
+    render()
+  }
+  stage.throw(result.pitch, ab.pitcher.throws, ab.batter.stands, reveal)
+  // the ballpark only draws while the tab is showing, so don't leave you waiting on it
+  setTimeout(reveal, 6000)
 }
 
 function next(): void {
   if (state.phase !== 'reveal') return
-  if (!state.session!.next()) {
+  const s = state.session!
+  if (!s.next()) {
     state.phase = 'done'
     if (state.mode === 'daily') saveResult(todaysResult())
   } else {
     state.phase = 'calling'
-    state.pick = {}
+    state.pick = { pitch: favorite(s.atBat) }
   }
   render()
   window.scrollTo({ top: 0 })
@@ -578,10 +678,10 @@ app.addEventListener('click', (e) => {
   if (action === 'share-card') return void share('card')
   if (action === 'call') return lockIn()
   if (action === 'next') return next()
-  if (action === 'replay') return replay?.replay()
+  if (action === 'replay') return stage?.replay()
   const pitch = target.closest<HTMLElement>('[data-pitch]')?.dataset.pitch
   if (pitch) return choosePitch(pitch as PitchCall)
-  // only the live zone takes clicks, the one on the reveal is a picture
+  // only the zone you're calling on takes clicks, the one on the reveal is a picture
   const zone = target.closest<HTMLElement>('.interactive [data-zone]')?.dataset.zone
   if (zone) return chooseZone(zone as Zone)
 })
@@ -591,11 +691,14 @@ window.addEventListener('keydown', (e) => {
   if (!state || e.metaKey || e.ctrlKey || e.altKey) return
   const key = e.key.toLowerCase()
   if (key === 'enter' || key === ' ') {
+    // let a focused button do its own thing
+    if ((e.target as HTMLElement).closest('button, summary, a')) return
     e.preventDefault()
     if (state.phase === 'calling') lockIn()
     else if (state.phase === 'reveal') next()
     return
   }
+  if (key === 'r' && state.phase === 'reveal') return stage?.replay()
   const pitch = PITCH_ORDER.find((c) => PITCHES[c].key === key)
   if (pitch) return choosePitch(pitch)
   if (/^[1-9]$/.test(key)) return chooseZone(key as Zone)
