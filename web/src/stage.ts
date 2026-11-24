@@ -97,7 +97,7 @@ export class Stage {
     this.canvas.className = 'stage-canvas'
 
     this.scene.background = sky()
-    this.scene.fog = new THREE.Fog('#16283c', 260, 900)
+    this.scene.fog = new THREE.Fog('#3b2b3e', 260, 900)
     this.lights()
     this.field()
     this.stadium()
@@ -160,7 +160,7 @@ export class Stage {
   }
 
   private lights(): void {
-    this.scene.add(new THREE.HemisphereLight('#d6e6ff', '#2a4a2a', 1.1))
+    this.scene.add(new THREE.HemisphereLight('#ffe6cf', '#2a4a2a', 1.1))
     const key = new THREE.DirectionalLight('#fff6e8', 2.2)
     key.position.copy(v(-60, -40, 120))
     key.target.position.copy(v(0, 30, 0))
@@ -175,7 +175,7 @@ export class Stage {
     cam.far = 400
     key.shadow.bias = -0.0005
     this.scene.add(key, key.target)
-    const fill = new THREE.DirectionalLight('#9ec4ff', 0.6)
+    const fill = new THREE.DirectionalLight('#d9a4c0', 0.6)
     fill.position.copy(v(80, 100, 60))
     this.scene.add(fill)
   }
@@ -277,7 +277,7 @@ export class Stage {
     const arc = Math.PI * 0.62
     const wall = new THREE.Mesh(
       new THREE.CylinderGeometry(wallRadius, wallRadius, 10, 96, 1, true, -arc / 2, arc),
-      new THREE.MeshStandardMaterial({ color: '#173a5e', roughness: 0.9, side: THREE.BackSide }),
+      new THREE.MeshStandardMaterial({ color: '#1d3a2b', roughness: 0.9, side: THREE.BackSide }),
     )
     wall.position.copy(v(0, 0, 5))
     wall.rotation.y = Math.PI
@@ -319,7 +319,7 @@ export class Stage {
 
     // light towers, with panels that glow
     const glow = new THREE.MeshBasicMaterial({ color: '#fffbe8' })
-    const pole = new THREE.MeshStandardMaterial({ color: '#2b3540' })
+    const pole = new THREE.MeshStandardMaterial({ color: '#2e2a2c' })
     for (const angle of [-0.55, -0.2, 0.2, 0.55]) {
       const r = wallRadius + 120
       const x = Math.sin(angle) * r
@@ -667,14 +667,14 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D)
   return texture
 }
 
-/** a night sky over a lit ballpark: dark up top, glowing toward the stands */
+/** a twilight sky over a lit ballpark: indigo up top, the last of the sun behind the stands */
 function sky(): THREE.Texture {
   return canvasTexture(4, 256, (g) => {
     const grad = g.createLinearGradient(0, 0, 0, 256)
-    grad.addColorStop(0, '#040912')
-    grad.addColorStop(0.5, '#0d1f36')
-    grad.addColorStop(0.8, '#24476e')
-    grad.addColorStop(1, '#3d6690')
+    grad.addColorStop(0, '#15172e')
+    grad.addColorStop(0.45, '#3a2a4a')
+    grad.addColorStop(0.75, '#8a4a55')
+    grad.addColorStop(1, '#e08a5c')
     g.fillStyle = grad
     g.fillRect(0, 0, 4, 256)
   })
@@ -697,7 +697,7 @@ function mowed(): THREE.Texture {
 /** rows of seats with a crowd in them: specks of shirts and faces on dark stands */
 function crowd(): THREE.Texture {
   const texture = canvasTexture(1024, 256, (g) => {
-    g.fillStyle = '#0b1522'
+    g.fillStyle = '#1a1418'
     g.fillRect(0, 0, 1024, 256)
     const colors = ['#2f6fd6', '#f4f6f8', '#c9d4e0', '#1d3f75', '#e8c547', '#d8a080', '#8a5a3c']
     let seed = 7
