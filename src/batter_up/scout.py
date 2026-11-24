@@ -49,7 +49,7 @@ WHIFFS = {"swinging_strike", "swinging_strike_blocked", "missed_bunt"}
 # a starter averages at least this many pitches a game
 STARTER_PITCHES = 45
 # a starter who misses this many bats is an ace, and aces give the least away
-ACE_WHIFF = 0.28
+ACE_WHIFF = 0.26
 
 
 def direction(plate_x, plate_z, sz_bot, sz_top) -> np.ndarray:
