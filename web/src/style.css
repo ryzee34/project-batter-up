@@ -2139,3 +2139,254 @@ button.secondary.wide {
     display: none;
   }
 }
+
+/* pitch recognition */
+
+.rec-bug {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+}
+
+.rec-score {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.rec-score small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rec-score b {
+  font-family: var(--display);
+  font-size: 2rem;
+}
+
+.rec-pips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #1a2f46;
+}
+
+.pip.lv {
+  margin-left: 6px;
+}
+
+.pip.now {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.pip.full {
+  background: var(--good);
+}
+
+.pip.part {
+  background: var(--part);
+}
+
+.pip.none {
+  background: var(--sq-none);
+}
+
+.rec-frame.interactive {
+  cursor: crosshair;
+}
+
+.rec-side {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #e6eef7cc;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+}
+
+.rec-side.l {
+  left: 4%;
+}
+
+.rec-side.r {
+  right: 4%;
+}
+
+.dot.tap {
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 3px solid #fff;
+  background: transparent;
+  box-shadow: 0 0 0 2px #0008;
+}
+
+.miss-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.miss-line line {
+  stroke: #fff;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.stage-legend i.truth {
+  background: var(--good);
+  border-radius: 50%;
+}
+
+.rec-clock {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 5px;
+  background: #ffffff1a;
+}
+
+.rec-clock i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  animation: clock var(--secs) linear both;
+}
+
+@keyframes clock {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.rec-pitches {
+  margin-top: 12px;
+}
+
+.pitch.truth {
+  box-shadow: inset 0 0 0 2px var(--good);
+}
+
+.rec-compare th {
+  width: 25%;
+}
+
+a.clip {
+  display: block;
+  margin-top: 12px;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--fg);
+  font-weight: 550;
+  text-align: center;
+  text-decoration: none;
+}
+
+a.clip:hover {
+  background: var(--panel-2);
+}
+
+.other-mode {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.other-mode summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.other-mode[open] summary {
+  margin-bottom: 10px;
+}
+
+.rec-recap li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rec-recap li span {
+  width: 9em;
+  font-size: 0.85rem;
+}
+
+.rec-bar .rec-pitches {
+  margin: 0 0 10px;
+}
+
+@media (max-width: 760px) {
+  .rec-top .matchup .player small {
+    display: none;
+  }
+
+  .rec-top .matchup .player b {
+    font-size: 0.95rem;
+  }
+
+  .rec-top .matchup .player span {
+    font-size: 0.75rem;
+  }
+
+  .rec-top .rec-score b {
+    font-size: 1.5rem;
+  }
+
+  .rec-top .pip {
+    width: 10px;
+    height: 10px;
+  }
+
+  .rec-top .pip.lv {
+    margin-left: 3px;
+  }
+
+  .rec-bar .rec-pitches {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .rec-bar .pitch {
+    grid-template-columns: 8px 1fr;
+    gap: 6px;
+    padding: 10px 8px;
+    font-size: 0.85rem;
+  }
+
+  .arena.rec .side .panel.call > :not(.call-bar) {
+    display: none;
+  }
+
+  .arena.rec .side .panel.call {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+}

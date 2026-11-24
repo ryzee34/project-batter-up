@@ -46,3 +46,32 @@ export function saveNotebook(all: Record<string, Notes>): void {
     // not saved, the notebook just starts over next visit
   }
 }
+
+// pitch recognition runs: the daily one by date, practice ones by when they ended
+
+const RECS = 'batter-up:recognition:v1'
+
+export interface RecSaved {
+  score: number
+  read: number
+  grid: string
+}
+
+export function loadRecs(): Record<string, RecSaved> {
+  try {
+    const raw = window.localStorage.getItem(RECS)
+    return raw ? (JSON.parse(raw) as Record<string, RecSaved>) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveRec(key: string, r: RecSaved): void {
+  try {
+    const all = loadRecs()
+    all[key] = r
+    window.localStorage.setItem(RECS, JSON.stringify(all))
+  } catch {
+    // not saved, the game still works
+  }
+}

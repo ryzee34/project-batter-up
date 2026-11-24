@@ -5,7 +5,6 @@ import './style.css'
 
 import {
   HOT,
-  POINTS,
   Session,
   deal,
   describe,
@@ -16,9 +15,26 @@ import {
   type PitchResult,
 } from './game'
 import { shareCard } from './card'
-import { dailyAtBats, dayKey, dayNumber, result, shareText, streak, type Result } from './daily'
-import { loadNotebook, loadResults, saveNotebook, saveResult } from './store'
+import { SITE, dailyAtBats, dayKey, dayNumber, result, shareText, streak, type Result } from './daily'
+import { loadNotebook, loadRecs, loadResults, saveNotebook, saveRec, saveResult } from './store'
 import { PITCHES, PITCH_ORDER, escape, ordinal, pct, spot } from './labels'
+import {
+  BEST,
+  CALL_SECONDS,
+  LEVELS,
+  PER_LEVEL,
+  RUN_LENGTH,
+  Run,
+  cards,
+  clipUrl,
+  dealRun,
+  daySeed,
+  recShare,
+  recSquare,
+  type RecCall,
+  type RecGrade,
+} from './recognize'
+import { breakInches } from './flight'
 import type { Stage } from './stage'
 import {
   CUES,
@@ -46,7 +62,7 @@ import {
   type Way,
 } from './tells'
 import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall } from './types'
-import { wayName, zoneGrid } from './zone'
+import { recZone, wayName, zoneGrid } from './zone'
 
 const AT_BATS_PER_GAME = 3
 // the arrows point the way the pitch goes, as the catcher sees it
@@ -60,7 +76,18 @@ const ARROWS: Record<string, Way> = {
 const HOLDS = [0.35, 1.6]
 
 /** calling: you're picking. pitching: the windup and the throw. reveal: how you did */
-type Phase = 'title' | 'calling' | 'pitching' | 'reveal' | 'done'
+/** calling: you're picking. pitching: the windup and the throw. reveal: how you did.
+ * the rec phases are pitch recognition: watching it fly, calling it, seeing it, the end */
+type Phase =
+  | 'title'
+  | 'calling'
+  | 'pitching'
+  | 'reveal'
+  | 'done'
+  | 'rec-watch'
+  | 'rec-call'
+  | 'rec-reveal'
+  | 'rec-done'
 
 interface State {
   data: GameData
@@ -76,6 +103,10 @@ interface State {
   readDone: boolean
   notes: Record<string, Notes>
   last: PitchResult | null
+  run: Run | null
+  runMode: 'daily' | 'practice'
+  rec: RecCall
+  recLast: RecGrade | null
 }
 
 const app = document.querySelector<HTMLElement>('#app')!
@@ -122,6 +153,16 @@ function mountStage(): void {
 
 /** set the players and the zone for whatever is on screen */
 function syncStage(s: Stage): void {
+  // pitch recognition drives the ballpark itself
+  if (state.run && state.phase.startsWith('rec-') && state.phase !== 'rec-done') {
+    s.showCam = false
+    if (state.phase === 'rec-watch' && staged !== recKey()) {
+      staged = recKey()
+      throwRec(s)
+    }
+    return
+  }
+  s.showCam = !!state.session && state.phase !== 'done'
   const session = state.session
   if (!session || state.phase === 'done') {
     // the title and final screens: someone idling on the mound
@@ -131,7 +172,6 @@ function syncStage(s: Stage): void {
     staged = key
     return
   }
-  s.showCam = true
   const ab = session.atBat
   const p = session.pitch
   const key = `${ab.id}:${p.n}`
@@ -232,6 +272,10 @@ async function boot(): Promise<void> {
       readDone: false,
       notes: loadNotebook(),
       last: null,
+      run: null,
+      runMode: 'daily',
+      rec: { pitch: null, spot: null },
+      recLast: null,
     }
     render()
   } catch (err) {
@@ -251,9 +295,13 @@ function render(): void {
     pitching: renderGame,
     reveal: renderGame,
     done: renderDone,
+    'rec-watch': renderRec,
+    'rec-call': renderRec,
+    'rec-reveal': renderRec,
+    'rec-done': renderRecDone,
   }[state.phase]()
   app.dataset.phase = state.phase
-  const backdrop = state.phase === 'title' || state.phase === 'done'
+  const backdrop = state.phase === 'title' || state.phase === 'done' || state.phase === 'rec-done'
   app.innerHTML = (backdrop ? '<div class="backdrop stage" id="stage"></div>' : '') + banner + body
   if (stageBroken) document.querySelectorAll('.stage').forEach((el) => el.classList.add('flat'))
   if (stage && !stageBroken) {
@@ -267,27 +315,48 @@ function render(): void {
 // title
 
 function renderTitle(): string {
-  const s = state.summary
-  const stats = s
-    ? `<div class="stats">
-        <div class="stat model"><b>${pct(s.model.pitch_type)}</b><span>the model gets the pitch type right, on a season it never saw</span></div>
-        <div class="stat"><b>${pct(s.baseline.pitch_type)}</b><span>always guessing the pitcher's favorite pitch</span></div>
-      </div>`
-    : ''
   return `
     <section class="card title">
-      <p class="eyebrow">${escape(state.data.team)} · ${state.data.season} season</p>
+      <p class="eyebrow">${escape(state.data.team)} · ${state.data.season} season · real pitches</p>
       <h1 class="wordmark">batter up</h1>
-      <p class="lede">read the pitcher and call the next pitch in real at-bats, before it's thrown. a model calls it too. try to beat it.</p>
+      <p class="lede">real pitches, on their real paths. you only see the start of each one. call what it is and where it crossed.</p>
       <ol class="how">
-        <li><b>watch him come set</b><span>every pitcher gives something away in his delivery: where his glove sits, how high he kicks, how long he holds, where his arm comes from. it stops just before he lets go</span></li>
-        <li><b>call the pitch and where it goes</b><span>use what he showed, his real scouting book and your own notes on him. the more you face him, the more the scouts tell you</span></li>
-        <li><b>hit ready</b><span>he throws the real pitch, on its real path, and you see who read it</span></li>
+        <li><b>watch it leave his hand</b><span>the ball flies on the path statcast measured, then vanishes partway to the plate</span></li>
+        <li><b>call it</b><span>pick the pitch and tap where you think it crossed. you have ${CALL_SECONDS} seconds</span></li>
+        <li><b>it gets harder</b><span>every ${PER_LEVEL} pitches it vanishes earlier, from ${LEVELS[0].gone} feet out to ${LEVELS.at(-1)!.gone}. points go up ×${LEVELS.at(-1)!.mult} by the end</span></li>
       </ol>
-      ${stats}
-      <p class="rules"><span><b>${POINTS.pitch}</b> right pitch</span><span><b>${POINTS.way}</b> up, down, in or away</span><span><b>×2</b> after ${HOT} reads in a row</span></p>
-      ${dailyBox()}
+      ${recBox()}
+      <details class="other-mode">
+        <summary>or call whole at-bats against the model</summary>
+        <p class="muted small">the original game: read the pitcher in a real at-bat and call the next pitch before it's thrown</p>
+        ${dailyBox()}
+      </details>
     </section>`
+}
+
+function recBox(): string {
+  const best = loadRecs()
+  const today = best[state.today]
+  const top = Math.max(0, ...Object.values(best).map((r) => r.score))
+  const record = top ? `<p class="muted center small">your best run: ${top}</p>` : ''
+  if (stageBroken) {
+    return `<p class="muted center">pitch recognition needs 3d graphics, which this browser has turned off</p>`
+  }
+  if (!today) {
+    return `
+      <button class="primary" data-action="rec-daily">today's ${RUN_LENGTH} pitches <small>#${dayNumber(state.today)}</small></button>
+      <button class="secondary wide" data-action="rec-practice">practice run</button>
+      ${record}`
+  }
+  return `
+    <div class="today">
+      <p class="eyebrow">today's run</p>
+      <p class="score-line"><span class="side you"><small>score</small><b>${today.score}</b></span></p>
+      <pre class="grid">${today.grid}</pre>
+      <div class="share"><button class="secondary" data-action="rec-share">share result</button><span class="rec-note" aria-live="polite"></span></div>
+      ${record}
+    </div>
+    <button class="secondary wide" data-action="rec-practice">practice run</button>`
 }
 
 function dailyBox(): string {
@@ -731,6 +800,7 @@ function revealPanel(): string {
       <p class="showed"><small>he showed</small>${showed} <span class="muted">→ ${p.pitch}, in your notebook</span></p>
       ${booth}
       ${ending}
+      ${clipUrl(p) ? `<a class="clip" href="${clipUrl(p)}" target="_blank" rel="noopener">watch the real pitch on baseball savant ↗</a>` : ''}
       <details class="model-odds">
         <summary>what the model saw coming</summary>
         ${odds(p)}
@@ -772,6 +842,273 @@ function renderDone(): string {
       ${state.mode === 'daily' ? shareButtons() : ''}
       <button class="primary" data-action="home">${state.mode === 'daily' ? 'back to the start' : 'play again'}</button>
     </section>`
+}
+
+// pitch recognition
+
+function recKey(): string {
+  const run = state.run!
+  return `rec:${run.index}:${run.card.ab.id}:${run.card.pitch.n}`
+}
+
+let recTimer: number | undefined
+
+function startRun(mode: 'daily' | 'practice'): void {
+  state.today = dayKey()
+  state.runMode = mode
+  const seed = mode === 'daily' ? daySeed(state.today) : Math.floor(Math.random() * 2 ** 31)
+  state.run = new Run(dealRun(cards(state.data.atBats), seed))
+  state.session = null
+  window.scrollTo({ top: 0 })
+  beginPitch()
+}
+
+function beginPitch(): void {
+  state.phase = 'rec-watch'
+  state.rec = { pitch: null, spot: null }
+  state.recLast = null
+  staged = ''
+  render()
+  // on a phone the ballpark goes to the top of the screen, with your buttons under it
+  if (matchMedia('(max-width: 760px)').matches) {
+    document.querySelector('#stage')?.scrollIntoView({ block: 'start' })
+  }
+}
+
+/** he throws it, and the ball vanishes at this level's distance */
+function throwRec(s: Stage): void {
+  const run = state.run!
+  const { ab, pitch } = run.card
+  const key = recKey()
+  s.ready(pitch, ab.pitcher.throws, ab.batter.stands)
+  s.throw(pitch, ab.pitcher.throws, ab.batter.stands, () => {}, {
+    at: run.level.gone,
+    then: () => {
+      if (state.phase !== 'rec-watch' || recKey() !== key) return
+      state.phase = 'rec-call'
+      render()
+      clearTimeout(recTimer)
+      recTimer = window.setTimeout(() => submitRec(), CALL_SECONDS * 1000)
+    },
+  })
+}
+
+function recPick(pitch: PitchCall): void {
+  if (state.phase !== 'rec-call' && state.phase !== 'rec-watch') return
+  state.rec.pitch = pitch
+  render()
+}
+
+function recTap(x: number, z: number): void {
+  if (state.phase !== 'rec-call' && state.phase !== 'rec-watch') return
+  state.rec.spot = [x, z]
+  render()
+}
+
+/** the call is in (or time's up): grade it and show the rest of the flight */
+function submitRec(): void {
+  if (state.phase !== 'rec-call') return
+  clearTimeout(recTimer)
+  const run = state.run!
+  state.recLast = run.call(state.rec)
+  state.phase = 'rec-reveal'
+  render()
+  stage?.finish(() => {})
+}
+
+function nextRec(): void {
+  if (state.phase !== 'rec-reveal') return
+  const run = state.run!
+  if (run.next()) return beginPitch()
+  state.phase = 'rec-done'
+  if (state.runMode === 'daily') {
+    saveRec(state.today, {
+      score: run.score,
+      read: run.read,
+      grid: recShare(dayNumber(state.today), run.results, SITE).split('\n')[2],
+    })
+  } else {
+    saveRec(`practice:${Date.now()}`, { score: run.score, read: run.read, grid: '' })
+  }
+  render()
+  window.scrollTo({ top: 0 })
+}
+
+function renderRec(): string {
+  const run = state.run!
+  const { ab, pitch } = run.card
+  const level = run.level
+  const phase = state.phase
+  const reveal = phase === 'rec-reveal'
+  const book = bookFor(ab)
+  const mine = repertoire(ab, book)
+  const chips = (mine.length ? mine : PITCH_ORDER)
+    .map(
+      (c) => `
+      <button class="pitch ${state.rec.pitch === c ? 'selected' : ''} ${reveal && c === pitch.pitch ? 'truth' : ''}"
+        data-rec-pitch="${c}" style="--c:${PITCHES[c].color}" aria-pressed="${state.rec.pitch === c}" ${reveal ? 'disabled' : ''}>
+        <span class="swatch"></span><span class="name">${c}</span><kbd>${PITCHES[c].key}</kbd>
+      </button>`,
+    )
+    .join('')
+  const levelNo = Math.floor(run.index / PER_LEVEL) + 1
+  const pips = run.cards
+    .map((_, i) => {
+      const r = run.results[i]
+      const cls = r ? (recSquare(r) === '🟩' ? 'full' : recSquare(r) === '🟨' ? 'part' : 'none') : i === run.index ? 'now' : ''
+      return `<i class="pip ${cls} ${i % PER_LEVEL === 0 ? 'lv' : ''}"></i>`
+    })
+    .join('')
+  const hud =
+    phase === 'rec-watch'
+      ? `<p class="stage-toast">watch it · gone at ${level.gone} ft</p>`
+      : phase === 'rec-call'
+        ? `<div class="rec-clock" style="--secs:${CALL_SECONDS}s"><i></i></div><p class="stage-hint"><b>where did it cross?</b><span>tap the zone and pick the pitch</span></p>`
+        : recFlash()
+  const side = reveal ? recRevealPanel() : `
+    <div class="panel call">
+      <p class="eyebrow">pitch ${run.index + 1} of ${run.cards.length} · level ${levelNo} · ×${level.mult}</p>
+      <h2 class="ask">${phase === 'rec-watch' ? 'watch it' : 'call it'}</h2>
+      <p class="muted small">gone at <b>${level.gone} ft</b> from the plate. a hitter decides about 20 ft out</p>
+      <div class="call-bar rec-bar"><div class="pitches rec-pitches">${chips}</div><button class="primary ready" data-action="rec-call" ${phase === 'rec-call' && (state.rec.pitch || state.rec.spot) ? '' : 'disabled'}>
+        ${state.rec.pitch && state.rec.spot ? `call it <small>${state.rec.pitch}</small>` : state.rec.pitch ? 'tap where it crossed' : state.rec.spot ? 'pick the pitch' : 'call it'}
+      </button></div>
+      <p class="keys"><kbd>${PITCHES.fastball.key}</kbd><kbd>${PITCHES.slider.key}</kbd>… pitch, tap the zone, <kbd>enter</kbd> call it</p>
+    </div>`
+  return `
+    <div class="game-top rec-top">
+      <header class="bug rec-bug" aria-label="your run">
+        <div class="rec-score"><small>score</small><b>${run.score}</b></div>
+        <div class="rec-pips" aria-label="pitch ${run.index + 1} of ${run.cards.length}">${pips}</div>
+      </header>
+      <section class="matchup">
+        <div class="player">
+          <small>pitching</small>
+          <b>${escape(ab.pitcher.name)}</b>
+          <span>${ab.pitcher.throws === 'R' ? 'righty' : 'lefty'} · throws ${mine.slice(0, 4).join(', ')}</span>
+        </div>
+        <span class="vs">vs</span>
+        <div class="player">
+          <small>at bat</small>
+          <b>${escape(ab.batter.name)}</b>
+          <span>bats ${ab.batter.stands === 'R' ? 'right' : 'left'} · ${pitch.count} count</span>
+        </div>
+      </section>
+    </div>
+    <section class="arena rec ${phase}">
+      <div class="stage ${stage ? 'live' : ''}" id="stage">
+        <div class="zone-overlay">${recZone({
+          tap: state.rec.spot ?? undefined,
+          truth: reveal ? pitch : undefined,
+          stands: ab.batter.stands,
+          interactive: phase === 'rec-call' || phase === 'rec-watch',
+        })}</div>
+        ${hud}
+      </div>
+      <aside class="side">${side}</aside>
+    </section>`
+}
+
+function recFlash(): string {
+  const g = state.recLast!
+  const cls = recSquare(g) === '🟩' ? 'perfect' : recSquare(g) === '🟨' ? 'part' : 'miss'
+  const words = g.pitch
+    ? g.miss !== null && g.spotPoints
+      ? 'read it'
+      : 'right pitch'
+    : g.spotPoints
+      ? 'good spot, wrong pitch'
+      : state.rec.pitch || state.rec.spot
+        ? 'fooled you'
+        : 'too slow'
+  return `
+    <p class="stage-flash ${cls}"><b>+${g.points}</b>${words}</p>
+    <span class="stage-legend"><i class="you"></i>your tap <i class="truth"></i>where it crossed</span>`
+}
+
+function recRevealPanel(): string {
+  const run = state.run!
+  const { ab, pitch } = run.card
+  const g = state.recLast!
+  const brk = breakInches(pitch)
+  const clip = clipUrl(pitch)
+  const miss =
+    g.miss === null
+      ? 'no tap'
+      : `${Math.round(g.miss * 12)} in off`
+  const last = run.index === run.cards.length - 1
+  return `
+    <div class="panel result">
+      <div class="pitch-card" style="--c:${PITCHES[pitch.pitch].color}">
+        <p class="eyebrow">${escape(ab.pitcher.name)} · ${pitch.count} count · ${escape(ab.date)}</p>
+        <h2>${pitch.mph} <small>mph</small> ${escape(pitch.name.toLowerCase())}</h2>
+        <p>${spot(pitch.zone, ab.batter.stands)} · <b>${describe(pitch.result)}</b> · ${Math.abs(brk.horizontal)} in sideways, ${Math.abs(brk.vertical)} in ${brk.vertical >= 0 ? 'of rise' : 'of drop'}</p>
+      </div>
+      <table class="compare rec-compare">
+        <tbody>
+          <tr class="you"><th>pitch</th><td class="${g.pitch ? 'right' : 'wrong'}"><span class="mark">${g.pitch ? '✓' : '✗'}</span>${state.rec.pitch ?? 'no call'}</td><td class="pts">+${g.pitch ? 10 * run.level.mult : 0}</td></tr>
+          <tr class="you"><th>spot</th><td class="${g.spotPoints ? 'right' : 'wrong'}"><span class="mark">${g.spotPoints ? '✓' : '✗'}</span>${miss}</td><td class="pts">+${g.spotPoints * run.level.mult}</td></tr>
+        </tbody>
+      </table>
+      ${clip ? `<a class="clip" href="${clip}" target="_blank" rel="noopener">watch the real pitch on baseball savant ↗</a>` : ''}
+      <div class="call-bar"><button class="primary" data-action="rec-next">${last ? 'see your run' : 'next pitch'}</button></div>
+      <p class="keys"><kbd>enter</kbd> next <kbd>r</kbd> replay</p>
+    </div>`
+}
+
+function renderRecDone(): string {
+  const run = state.run!
+  const rows = []
+  for (let i = 0; i < run.results.length; i += PER_LEVEL) {
+    const lv = LEVELS[i / PER_LEVEL]
+    rows.push(`<li><span class="muted">gone at ${lv.gone} ft</span>${run.results
+      .slice(i, i + PER_LEVEL)
+      .map((r) => `<i class="sq ${recSquare(r) === '🟩' ? 'full' : recSquare(r) === '🟨' ? 'part' : 'none'}"></i>`)
+      .join('')}</li>`)
+  }
+  const tag = state.runMode === 'daily' ? `batter up #${dayNumber(state.today)}` : 'practice run'
+  return `
+    <section class="card done">
+      <p class="eyebrow">${tag} · pitch recognition</p>
+      <h1>${run.score} <small class="muted">of ${BEST}</small></h1>
+      <p class="muted center">you read ${run.read} of ${run.cards.length} pitches</p>
+      <ol class="recap rec-recap">${rows.join('')}</ol>
+      <p class="legend"><span><i class="sq full"></i> pitch and spot</span><span><i class="sq part"></i> one of them</span><span><i class="sq none"></i> missed</span></p>
+      ${state.runMode === 'daily' ? `<div class="share"><button class="secondary" data-action="rec-share">share result</button><span class="rec-note" aria-live="polite"></span></div>` : ''}
+      <button class="primary" data-action="rec-practice">${state.runMode === 'daily' ? 'practice run' : 'go again'}</button>
+      <button class="secondary wide" data-action="home">back to the start</button>
+    </section>`
+}
+
+async function shareRec(): Promise<void> {
+  const saved = loadRecs()[state.today]
+  const el = document.querySelector('.rec-note')
+  const text = state.run && state.runMode === 'daily' && state.run.done
+    ? recShare(dayNumber(state.today), state.run.results, SITE)
+    : saved
+      ? [`batter up #${dayNumber(state.today)} ⚾ pitch recognition`, `${saved.score} pts · read ${saved.read}/${RUN_LENGTH}`, saved.grid, SITE].join('\n')
+      : ''
+  if (!text) return
+  try {
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ text })
+    else {
+      await navigator.clipboard.writeText(text)
+      if (el) el.textContent = 'copied'
+    }
+  } catch (err) {
+    if ((err as Error).name !== 'AbortError' && el) el.textContent = "couldn't share, sorry"
+  }
+}
+
+/** a tap on the zone to plate_x and plate_z, from the frame's box on screen */
+function tapToPlate(frame: HTMLElement, e: MouseEvent): [number, number] {
+  const r = frame.getBoundingClientRect()
+  const left = ((e.clientX - r.left) / r.width) * 100
+  const top = ((e.clientY - r.top) / r.height) * 100
+  const [bot, topZ] = state.run!.card.pitch.sz
+  const x = (left / 100) * 3 - 1.5
+  const z = bot + ((100 - top - 25) / 50) * (topZ - bot)
+  return [Math.round(x * 100) / 100, Math.round(z * 100) / 100]
 }
 
 // actions
@@ -880,8 +1217,10 @@ async function share(kind: 'text' | 'card'): Promise<void> {
 }
 
 function home(): void {
+  clearTimeout(recTimer)
   state.phase = 'title'
   state.session = null
+  state.run = null
   render()
   window.scrollTo({ top: 0 })
 }
@@ -889,6 +1228,15 @@ function home(): void {
 app.addEventListener('click', (e) => {
   const target = e.target as HTMLElement
   const action = target.closest<HTMLElement>('[data-action]')?.dataset.action
+  if (action === 'rec-daily') return startRun('daily')
+  if (action === 'rec-practice') return startRun('practice')
+  if (action === 'rec-call') return submitRec()
+  if (action === 'rec-next') return nextRec()
+  if (action === 'rec-share') return void shareRec()
+  const recPitch = target.closest<HTMLElement>('[data-rec-pitch]')?.dataset.recPitch
+  if (recPitch) return recPick(recPitch as PitchCall)
+  const frame = target.closest<HTMLElement>('.rec-frame.interactive')
+  if (frame) return recTap(...tapToPlate(frame, e))
   if (action === 'daily') return startGame('daily')
   if (action === 'practice') return startGame('practice')
   if (action === 'home') return home()
@@ -915,6 +1263,14 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault()
     if (state.phase === 'calling') lockIn()
     else if (state.phase === 'reveal') next()
+    else if (state.phase === 'rec-call') submitRec()
+    else if (state.phase === 'rec-reveal') nextRec()
+    return
+  }
+  if (state.phase.startsWith('rec-')) {
+    if (key === 'r' && state.phase === 'rec-reveal') return stage?.replay()
+    const p = PITCH_ORDER.find((c) => PITCHES[c].key === key)
+    if (p) return recPick(p)
     return
   }
   if (key === 'r' && state.phase === 'reveal') return stage?.replay()
