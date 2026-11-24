@@ -1,6 +1,5 @@
-import '@fontsource-variable/inter/wght.css'
-import '@fontsource/barlow-condensed/latin-600.css'
-import '@fontsource/barlow-condensed/latin-700.css'
+import '@fontsource-variable/libre-franklin/index.css'
+import '@fontsource/alfa-slab-one/latin-400.css'
 import './style.css'
 
 import {

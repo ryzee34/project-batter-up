@@ -1,22 +1,50 @@
 :root {
-  --bg: #08121e;
-  --panel: #0f1e30;
-  --panel-2: #142840;
-  --line: #213a55;
-  --line-soft: #1a2f46;
-  --fg: #f2f5f9;
-  --muted: #8ea4ba;
-  --accent: #2f80ff;
-  --accent-soft: #2f80ff33;
-  --you: #ffffff;
-  --model: #f5c542;
-  --good: #3fd17f;
-  --part: #f5c542;
-  --bad: #ff5a52;
-  --sq-none: #33465c;
-  --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --body: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color-scheme: dark;
+  /* a printed scorecard at a twilight game: cream stock, black ink, stitch red,
+     and the green of a hand-turned scoreboard for anything that sits on the field */
+  --bg: #e9dfc8;
+  --panel: #f5eedc;
+  --panel-2: #e7dcc1;
+  --card: #fbf7ec;
+  --ink: #1d1a14;
+  --line: #1d1a14;
+  --line-soft: #1d1a1426;
+  --fg: #1d1a14;
+  --muted: #6b6250;
+  --accent: #b5321e;
+  --accent-ink: #8f2414;
+  --accent-soft: #b5321e1c;
+  --board: #1d3a2b;
+  --board-2: #285040;
+  --chalk: #f3ead3;
+  --chalk-muted: #c4bb9f;
+  --bulb: #f2c14e;
+  --you: #1d1a14;
+  --you-ink: #fbf7ec;
+  --model: #b37d08;
+  --good: #2c7a47;
+  --part: #c08609;
+  --bad: #b5321e;
+  --sq-none: #d4c8ab;
+  --display: 'Alfa Slab One', Rockwell, 'Roboto Slab', Georgia, serif;
+  --body: 'Libre Franklin Variable', 'Libre Franklin', 'Franklin Gothic Medium', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+/* anything on the field or the scoreboard is chalk on green */
+.stage,
+.bug {
+  --fg: var(--chalk);
+  --muted: var(--chalk-muted);
+  --line: #f3ead35c;
+  --line-soft: #f3ead324;
+  --you: var(--chalk);
+  --you-ink: var(--ink);
+  --model: var(--bulb);
+  --part: var(--bulb);
+  --good: #5cc98a;
+  --bad: #ef6a4f;
+  --sq-none: #f3ead32a;
+  color: var(--fg);
 }
 
 * {
@@ -32,9 +60,10 @@ body {
   min-height: 100vh;
   background-color: var(--bg);
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, #1a3a5c 0%, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 50% 110%, #0d2a1f 0%, transparent 70%);
-  background-repeat: no-repeat;
+    linear-gradient(#1d1a140b 1px, transparent 1px),
+    linear-gradient(90deg, #1d1a140b 1px, transparent 1px);
+  background-size: 28px 28px;
+  font-synthesis: none;
   color: var(--fg);
   font-family: var(--body);
   font-size: 15px;
@@ -117,19 +146,23 @@ button.primary {
   margin-top: 1rem;
   padding: 0.95rem 1rem;
   border: 0;
-  border-radius: 12px;
+  border-radius: 4px;
   background: var(--accent);
-  box-shadow: 0 8px 24px -10px var(--accent);
-  color: #fff;
-  font-weight: 700;
+  box-shadow:
+    inset 0 -3px 0 #0000002e,
+    0 2px 0 var(--ink);
+  color: #fffaf0;
+  font-family: var(--display);
   font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   transition:
     transform 0.08s,
     background 0.15s;
 }
 
 button.primary:hover:not(:disabled) {
-  background: #4a92ff;
+  background: var(--accent-ink);
 }
 
 button.primary:active:not(:disabled) {
@@ -138,7 +171,9 @@ button.primary:active:not(:disabled) {
 
 button.primary small {
   margin-left: 6px;
-  font-weight: 500;
+  font-family: var(--body);
+  font-weight: 600;
+  letter-spacing: 0;
   opacity: 0.75;
 }
 
@@ -153,10 +188,10 @@ button.secondary {
   display: inline-block;
   margin-top: 0.6rem;
   padding: 0.7rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
   background: transparent;
-  font-weight: 550;
+  font-weight: 650;
 }
 
 button.secondary:hover {
@@ -170,10 +205,10 @@ button.secondary.wide {
 .banner {
   margin: 0 0 12px;
   padding: 7px 12px;
-  border: 1px solid #f5c54255;
-  border-radius: 10px;
-  background: #f5c54210;
-  color: #f1d58a;
+  border: 1px solid #c0860955;
+  border-radius: 4px;
+  background: #c0860910;
+  color: #7a5606;
   font-size: 0.8rem;
 }
 
@@ -188,8 +223,8 @@ button.secondary.wide {
 .panel {
   padding: 16px;
   background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
 }
 
 .panel h3 {
@@ -197,7 +232,11 @@ button.secondary.wide {
   align-items: center;
   gap: 10px;
   margin-bottom: 4px;
-  font-size: 1rem;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .panel h3 em {
@@ -220,24 +259,35 @@ button.secondary.wide {
   max-width: 600px;
   margin: 5vh auto 0;
   padding: 32px;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  box-shadow: 0 30px 80px -30px #000;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  outline: 1px solid var(--ink);
+  outline-offset: -8px;
+  box-shadow: 0 30px 60px -30px #000000a0;
 }
 
 .wordmark {
   margin: 0 0 0.6rem;
   font-family: var(--display);
-  font-weight: 700;
-  font-size: clamp(3.4rem, 14vw, 5.2rem);
-  line-height: 0.9;
+  font-weight: 400;
+  font-size: clamp(3rem, 13vw, 4.8rem);
+  line-height: 0.95;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #fff 30%, #9cc2ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
+}
+
+/* a row of red stitches under the name, like the seam on a ball */
+.wordmark::after {
+  content: '';
+  display: block;
+  width: min(100%, 6.4em);
+  height: 12px;
+  margin-top: 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='12'%3E%3Cpath d='M3 2.5 8 9.5 13 2.5' fill='none' stroke='%23b5321e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    left center / 16px 12px round no-repeat;
+  font-size: 1rem;
 }
 
 .lede {
@@ -269,11 +319,11 @@ button.secondary.wide {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: #9cc2ff;
+  border: 1.5px solid var(--ink);
+  color: var(--accent);
   font-family: var(--display);
-  font-weight: 700;
-  font-size: 1.2rem;
+  font-weight: 400;
+  font-size: 1.05rem;
 }
 
 .how span {
@@ -290,8 +340,8 @@ button.secondary.wide {
 
 .stat {
   padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
 }
 
 .stat b {
@@ -331,8 +381,8 @@ button.secondary.wide {
 .today {
   margin-top: 1rem;
   padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
+  border: 1.5px dashed var(--line);
+  border-radius: 4px;
   text-align: center;
 }
 
@@ -425,9 +475,9 @@ button.secondary.wide {
 
 .recap li {
   padding: 12px 14px;
-  background: #0b1828;
+  background: var(--card);
   border: 1px solid var(--line-soft);
-  border-radius: 14px;
+  border-radius: 4px;
 }
 
 .recap .who {
@@ -496,9 +546,10 @@ button.secondary.wide {
   overflow: hidden;
   width: fit-content;
   max-width: 100%;
-  background: #050c15;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: var(--board);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 3px var(--board), inset 0 0 0 4px #f3ead31f;
   font-family: var(--display);
 }
 
@@ -561,7 +612,7 @@ button.secondary.wide {
 
 .bug-bases rect {
   fill: transparent;
-  stroke: #5c7590;
+  stroke: var(--chalk-muted);
   stroke-width: 1.5;
 }
 
@@ -590,7 +641,7 @@ button.secondary.wide {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #1f3247;
+  background: #f3ead322;
 }
 
 .lights i.ball.on {
@@ -618,8 +669,8 @@ button.secondary.wide {
   margin-top: 12px;
   padding: 12px 16px;
   background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
 }
 
 .player {
@@ -638,7 +689,10 @@ button.secondary.wide {
 }
 
 .player b {
-  font-size: 1.05rem;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 0.01em;
 }
 
 .player span {
@@ -684,8 +738,8 @@ button.secondary.wide {
 .ask {
   margin: 20px 0 12px;
   font-family: var(--display);
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  font-weight: 700;
+  font-size: clamp(1.4rem, 3.6vw, 1.8rem);
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.01em;
 }
@@ -705,9 +759,9 @@ button.secondary.wide {
   padding: 9px 9px;
   font-size: 0.88rem;
   text-align: left;
-  background: #0b1828;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
+  background: var(--card);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 4px;
   transition:
     background 0.12s,
     border-color 0.12s;
@@ -744,7 +798,7 @@ button.secondary.wide {
   height: 6px;
   overflow: hidden;
   border-radius: 3px;
-  background: #1a2c40;
+  background: var(--line-soft);
 }
 
 .odds-row .bar i {
@@ -762,7 +816,7 @@ button.secondary.wide {
 }
 
 .pitch.selected {
-  background: color-mix(in srgb, var(--c) 22%, #0b1828);
+  background: color-mix(in srgb, var(--c) 16%, var(--card));
   border-color: var(--c);
   box-shadow: 0 0 0 1px var(--c) inset;
 }
@@ -799,7 +853,7 @@ button.secondary.wide {
   width: min(100%, 300px);
   aspect-ratio: 3 / 3.4;
   margin: 0 auto;
-  border-radius: 14px;
+  border-radius: 4px;
   background: repeating-linear-gradient(135deg, transparent 0 9px, #ffffff06 9px 10px), #08131f;
   border: 1px dashed var(--line);
 }
@@ -809,17 +863,17 @@ button.secondary.wide {
   inset: 0;
   padding: 0;
   border: 0;
-  border-radius: 14px;
+  border-radius: 4px;
   background: color-mix(in srgb, var(--accent) var(--heat, 0%), transparent);
   transition: background 0.12s;
 }
 
 .interactive .chase-area:hover {
-  background: #2f80ff2e;
+  background: #d0452f2e;
 }
 
 .chase-area.selected {
-  background: #2f80ff70;
+  background: #d0452f70;
 }
 
 .chase-area.truth {
@@ -883,7 +937,7 @@ button.secondary.wide {
 }
 
 .seams line {
-  stroke: #d5e0eb30;
+  stroke: #f3ead330;
   stroke-width: 1;
   stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
@@ -896,7 +950,7 @@ button.secondary.wide {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  border: 2px solid #d5e0eb;
+  border: 2px solid #f3ead3;
   border-radius: 2px;
 }
 
@@ -904,18 +958,18 @@ button.secondary.wide {
   position: relative;
   padding: 0;
   border-radius: 0;
-  border: 1px solid #d5e0eb30;
-  background: color-mix(in srgb, var(--accent) var(--heat, 0%), #0b1828);
+  border: 1px solid #f3ead330;
+  background: color-mix(in srgb, var(--accent) var(--heat, 0%), var(--card));
   transition: background 0.12s;
 }
 
 .interactive .cell:hover {
-  background: #2f80ff40;
+  background: #d0452f40;
 }
 
 .cell.selected {
-  background: #2f80ffa0;
-  box-shadow: inset 0 0 0 2px #9cc2ff;
+  background: #d0452fa0;
+  box-shadow: inset 0 0 0 2px var(--chalk);
 }
 
 .cell.truth {
@@ -936,7 +990,7 @@ button.secondary.wide {
   padding: 0 5px;
   border-radius: 4px;
   background: var(--you);
-  color: #08121e;
+  color: #fffaf0;
   font-size: 0.62rem;
   font-style: normal;
   font-weight: 700;
@@ -955,7 +1009,7 @@ button.secondary.wide {
   width: 20%;
   height: 7%;
   transform: translateX(-50%);
-  background: #d5e0eb40;
+  background: #f3ead340;
   clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 100%, 0 50%);
   pointer-events: none;
 }
@@ -975,7 +1029,7 @@ button.secondary.wide {
   width: 8px;
   height: 22px;
   border-radius: 4px;
-  background: #3a5470;
+  background: var(--chalk-muted);
 }
 
 .batter-box.left {
@@ -995,7 +1049,7 @@ button.secondary.wide {
   height: 16px;
   margin: -8px 0 0 -8px;
   border-radius: 50%;
-  color: #08121e;
+  color: #fffaf0;
   font-size: 0.6rem;
   font-weight: 700;
   pointer-events: none;
@@ -1050,7 +1104,7 @@ button.secondary.wide {
   padding: 1px 6px;
   border-radius: 5px;
   background: var(--c);
-  color: #08121e;
+  color: #fffaf0;
   font-weight: 700;
   font-size: 0.72rem;
 }
@@ -1100,26 +1154,23 @@ button.secondary.wide {
 
 .pitch-card {
   padding: 16px 18px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--c) 18%, var(--panel)),
-    var(--panel) 70%
-  );
-  border: 1px solid var(--line-soft);
-  border-left: 5px solid var(--c);
-  border-radius: 16px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-left: 8px solid var(--c);
+  border-radius: 4px;
 }
 
 .pitch-card h2 {
   margin: 2px 0 6px;
   font-family: var(--display);
-  font-size: 2rem;
+  font-weight: 400;
+  font-size: 1.9rem;
   line-height: 1.05;
   text-transform: uppercase;
 }
 
 .pitch-card h2 small {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--muted);
 }
 
@@ -1138,7 +1189,7 @@ button.secondary.wide {
   gap: 12px;
   margin: 0;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 4px;
   background: var(--panel);
   border: 1px solid var(--line-soft);
   font-weight: 600;
@@ -1152,7 +1203,7 @@ button.secondary.wide {
 
 .verdict.perfect {
   border-color: var(--good);
-  background: #3fd17f18;
+  background: #2c7a4718;
 }
 
 .verdict.perfect b {
@@ -1160,8 +1211,8 @@ button.secondary.wide {
 }
 
 .verdict.part {
-  border-color: #f5c54280;
-  background: #f5c54212;
+  border-color: #c0860980;
+  background: #c0860912;
 }
 
 .verdict.part b {
@@ -1177,9 +1228,9 @@ button.secondary.wide {
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
   font-size: 0.9rem;
 }
 
@@ -1258,11 +1309,11 @@ button.secondary.wide {
 .booth {
   margin: 0;
   padding: 12px 16px;
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-left: 3px solid var(--accent);
-  border-radius: 12px;
-  color: #dbe5ef;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
+  color: var(--fg);
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -1279,9 +1330,9 @@ button.secondary.wide {
 
 .ending {
   padding: 14px 16px;
-  background: #050c15;
+  background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
 }
 
 .ending p:last-child {
@@ -1290,7 +1341,7 @@ button.secondary.wide {
 
 .ending .wrap {
   margin-top: 8px;
-  color: #dbe5ef;
+  color: var(--fg);
   font-style: italic;
 }
 
@@ -1317,8 +1368,8 @@ button.secondary.wide {
 /* before three.js shows up, and if it never does: a night sky over grass */
 .stage {
   background:
-    radial-gradient(ellipse 70% 40% at 50% 0%, #2a4c78 0%, transparent 70%),
-    linear-gradient(180deg, #0b1a2c 0%, #12263c 46%, #1d4d2c 46%, #173f24 100%);
+    radial-gradient(ellipse 70% 30% at 50% 46%, #e48a5a 0%, transparent 70%),
+    linear-gradient(180deg, #1c1d3a 0%, #5b3557 32%, #c36a4f 46%, #2a6a37 46%, #1f5229 100%);
 }
 
 .backdrop {
@@ -1333,12 +1384,11 @@ button.secondary.wide {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #08121e66 0%, #08121eaa 60%, #08121eee 100%);
+  background: linear-gradient(180deg, #16301f66 0%, #16301faa 60%, #16301fee 100%);
 }
 
 .backdrop ~ .card {
-  background: linear-gradient(180deg, #142840e6, #0f1e30f0);
-  backdrop-filter: blur(6px);
+  background: var(--panel);
 }
 
 .game-top {
@@ -1365,9 +1415,9 @@ button.secondary.wide {
   position: relative;
   overflow: hidden;
   height: clamp(440px, calc(100vh - 190px), 760px);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 30px 80px -40px #000;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 0 20px 50px -30px #000000b0;
 }
 
 .zone-overlay {
@@ -1403,11 +1453,11 @@ button.secondary.wide {
 }
 
 .stage.live .interactive .chase-area:hover {
-  background: #2f80ff30;
+  background: #d0452f30;
 }
 
 .stage.live .chase-area.selected {
-  background: #2f80ff66;
+  background: #d0452f66;
 }
 
 .stage.live .chase-area.truth {
@@ -1415,7 +1465,7 @@ button.secondary.wide {
 }
 
 .stage.live .chase-label {
-  color: #e6eef7cc;
+  color: #f3ead3dd;
   text-shadow: 0 1px 3px #000;
 }
 
@@ -1432,15 +1482,15 @@ button.secondary.wide {
 
 .stage.live .cell {
   border-color: #ffffff30;
-  background: color-mix(in srgb, var(--accent) calc(var(--heat, 0%) * 0.8), #08121e33);
+  background: color-mix(in srgb, var(--accent) calc(var(--heat, 0%) * 0.8), #16301f33);
 }
 
 .stage.live .interactive .cell:hover {
-  background: #2f80ff55;
+  background: #d0452f55;
 }
 
 .stage.live .cell.selected {
-  background: #2f80ffa8;
+  background: #d0452fa8;
 }
 
 .stage.live .plate,
@@ -1482,8 +1532,8 @@ button.secondary.wide {
   padding: 8px 18px;
   transform: translateX(-50%);
   border: 1px solid #ffffff22;
-  border-radius: 14px;
-  background: #08121ed0;
+  border-radius: 4px;
+  background: #16301fd0;
   text-align: center;
   white-space: nowrap;
   animation: rise 0.4s ease-out both;
@@ -1499,11 +1549,11 @@ button.secondary.wide {
   top: 16px;
   padding: 6px 18px;
   transform: translateX(-50%);
-  border-radius: 999px;
-  background: #08121ed0;
+  border-radius: 3px;
+  background: #16301fd0;
   font-family: var(--display);
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   animation: pulse 1.1s ease-in-out infinite;
@@ -1517,19 +1567,20 @@ button.secondary.wide {
   gap: 10px;
   padding: 6px 20px 8px;
   transform: translateX(-50%);
-  border-radius: 14px;
-  background: #08121ee0;
+  border-radius: 4px;
+  background: #16301fe0;
   border: 1px solid var(--line);
   font-family: var(--display);
-  font-size: 1.4rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
   animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 
 .stage-flash b {
-  font-size: 2.2rem;
+  font-size: 2rem;
   line-height: 1;
 }
 
@@ -1555,8 +1606,8 @@ button.secondary.wide {
   bottom: 12px;
   padding: 6px 14px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #08121ecc;
+  border-radius: 3px;
+  background: #16301fcc;
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -1568,8 +1619,8 @@ button.secondary.wide {
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  border-radius: 999px;
-  background: #08121ecc;
+  border-radius: 3px;
+  background: #16301fcc;
   color: var(--muted);
   font-size: 0.78rem;
 }
@@ -1641,8 +1692,8 @@ button.secondary.wide {
   gap: 6px 10px;
   margin: 0 0 14px;
   padding: 10px 12px;
-  border-radius: 12px;
-  background: #0b1828;
+  border-radius: 4px;
+  background: var(--card);
   border: 1px solid var(--line-soft);
   font-weight: 650;
 }
@@ -1835,11 +1886,13 @@ button.secondary.wide {
 
   .stage-flash {
     top: 10px;
-    font-size: 1.15rem;
+    gap: 8px;
+    padding: 5px 12px 7px;
+    font-size: 0.9rem;
   }
 
   .stage-flash b {
-    font-size: 1.8rem;
+    font-size: 1.45rem;
   }
 
   .side .so-far.empty {
@@ -1853,7 +1906,7 @@ button.secondary.wide {
   position: absolute;
   z-index: 2;
   border: 1px solid #ffffff55;
-  border-radius: 10px;
+  border-radius: 4px;
   box-shadow: 0 6px 24px #0009;
   pointer-events: none;
 }
@@ -1864,8 +1917,8 @@ button.secondary.wide {
   top: 6px;
   padding: 1px 7px;
   border-radius: 6px;
-  background: #08121ec0;
-  color: #e6eef7;
+  background: #16301fc0;
+  color: #f3ead3;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1885,7 +1938,7 @@ button.secondary.wide {
   margin: 0;
   padding: 10px 12px;
   border: 1px dashed var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
 }
 
 .cues {
@@ -1902,8 +1955,8 @@ button.secondary.wide {
   flex-direction: column;
   gap: 1px;
   padding: 7px 10px;
-  border-radius: 10px;
-  background: #0b1828;
+  border-radius: 4px;
+  background: var(--card);
   border: 1px solid var(--line-soft);
   animation: fade 0.3s ease-out both;
 }
@@ -1927,7 +1980,7 @@ button.secondary.wide {
   padding: 0 4px;
   border-radius: 4px;
   background: var(--accent-soft);
-  color: #9cc2ff;
+  color: var(--accent-ink);
   font-style: normal;
 }
 
@@ -2007,7 +2060,7 @@ button.secondary.wide {
 .tier {
   margin-left: auto;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 3px;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -2016,17 +2069,17 @@ button.secondary.wide {
 }
 
 .tier.t1 {
-  background: #3fd17f26;
+  background: #2c7a4726;
   color: var(--good);
 }
 
 .tier.t2 {
-  background: #f5c54226;
+  background: #c0860926;
   color: var(--part);
 }
 
 .tier.t3 {
-  background: #ff5a5226;
+  background: #b5321e26;
   color: var(--bad);
 }
 
@@ -2073,7 +2126,7 @@ button.secondary.wide {
   height: 8px;
   min-width: 60px;
   border-radius: 4px;
-  background: #0b1828;
+  background: var(--card);
 }
 
 .mix-bar i {
@@ -2179,7 +2232,7 @@ button.secondary.wide {
   width: 12px;
   height: 12px;
   border-radius: 3px;
-  background: #1a2f46;
+  background: var(--sq-none);
 }
 
 .pip.lv {
@@ -2187,8 +2240,8 @@ button.secondary.wide {
 }
 
 .pip.now {
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
+  background: var(--bulb);
+  box-shadow: 0 0 10px var(--bulb);
 }
 
 .pip.full {
@@ -2211,7 +2264,7 @@ button.secondary.wide {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  color: #e6eef7cc;
+  color: #f3ead3dd;
   font-size: 0.66rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -2270,7 +2323,7 @@ button.secondary.wide {
 .rec-clock i {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--bulb);
   transform-origin: left;
   animation: clock var(--secs) linear both;
 }
@@ -2297,8 +2350,8 @@ a.clip {
   display: block;
   margin-top: 12px;
   padding: 0.7rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
   color: var(--fg);
   font-weight: 550;
   text-align: center;

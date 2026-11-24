@@ -1,13 +1,13 @@
 import type { Chase, PitchCall, Zone } from './types'
 
 export const PITCHES: Record<PitchCall, { short: string; color: string; key: string }> = {
-  fastball: { short: 'FF', color: '#ef5a4f', key: 'f' },
-  sinker: { short: 'SI', color: '#f39a3d', key: 's' },
-  cutter: { short: 'FC', color: '#e8c547', key: 'c' },
-  slider: { short: 'SL', color: '#55b7e8', key: 'l' },
-  curveball: { short: 'CU', color: '#7f8cf0', key: 'u' },
-  changeup: { short: 'CH', color: '#5fcf8a', key: 'h' },
-  splitter: { short: 'FS', color: '#c48ae8', key: 'p' },
+  fastball: { short: 'FF', color: '#c8372d', key: 'f' },
+  sinker: { short: 'SI', color: '#d9732a', key: 's' },
+  cutter: { short: 'FC', color: '#c9980f', key: 'c' },
+  slider: { short: 'SL', color: '#2f7f9f', key: 'l' },
+  curveball: { short: 'CU', color: '#5b56a8', key: 'u' },
+  changeup: { short: 'CH', color: '#3a8a52', key: 'h' },
+  splitter: { short: 'FS', color: '#9a4f8f', key: 'p' },
 }
 
 export const PITCH_ORDER: PitchCall[] = [
