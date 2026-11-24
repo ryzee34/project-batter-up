@@ -1,9 +1,21 @@
 import { describe as group, expect, it } from 'vitest'
 
-import { PERFECT, Session, deal, describe, grade, mulberry32 } from './game'
+import { HOT, PERFECT, Session, deal, describe, grade, modelGuess, mulberry32 } from './game'
+import type { Way } from './tells'
 import type { AtBat, Pitch, PitchCall, Zone } from './types'
 
-function pitch(n: number, call: PitchCall, zone: Zone, model: [PitchCall, Zone]): Pitch {
+// where a pitch crosses for each way, with the zone from 1.6 to 3.4 ft
+const PLATE: Record<Way, [number, number]> = {
+  up: [0.1, 3.9],
+  down: [-0.2, 1.2],
+  left: [-1.3, 2.6],
+  right: [1.1, 2.3],
+}
+
+function pitch(n: number, call: PitchCall, way: Way, model: [PitchCall, Zone]): Pitch {
+  const zone: Zone = { up: 'chase_up', down: 'chase_down', left: 'chase_left', right: 'chase_right' }[way] as Zone
+  const zoneOdds = Array(13).fill(0)
+  zoneOdds[['1', '2', '3', '4', '5', '6', '7', '8', '9', 'chase_up', 'chase_down', 'chase_left', 'chase_right'].indexOf(model[1])] = 1
   return {
     n,
     count: '0-0',
@@ -13,11 +25,11 @@ function pitch(n: number, call: PitchCall, zone: Zone, model: [PitchCall, Zone])
     mph: 90,
     spin: 2200,
     result: 'ball',
-    plate: [0, 2.5],
+    plate: PLATE[way],
     sz: [1.6, 3.4],
     release: [-2, 54, 6],
     flight: [5, -130, -5, -10, 28, -20],
-    model: { call: model, pitch: [], zone: [] },
+    model: { call: model, pitch: [], zone: zoneOdds },
     baseline: ['fastball', '5'],
   }
 }
@@ -43,47 +55,76 @@ function atBat(id: string, pitches: Pitch[]): AtBat {
 }
 
 group('grade', () => {
-  const truth = pitch(1, 'slider', '9', ['slider', '9'])
-  it('pays 2 for the pitch, 1 for the zone and 1 more for both', () => {
-    expect(grade({ pitch: 'slider', zone: '9' }, truth)).toEqual({
+  const truth = pitch(1, 'slider', 'down', ['slider', '8'])
+  it('pays 3 for the pitch and 1 for the way it went', () => {
+    expect(grade({ pitch: 'slider', way: 'down' }, truth)).toEqual({
       pitch: true,
-      zone: true,
+      way: true,
+      streak: 1,
       points: PERFECT,
     })
-    expect(grade({ pitch: 'slider', zone: '1' }, truth).points).toBe(2)
-    expect(grade({ pitch: 'fastball', zone: '9' }, truth).points).toBe(1)
-    expect(grade({ pitch: 'fastball', zone: 'chase_up' }, truth).points).toBe(0)
+    expect(grade({ pitch: 'slider', way: 'up' }, truth).points).toBe(3)
+    expect(grade({ pitch: 'fastball', way: 'down' }, truth).points).toBe(1)
+    expect(grade({ pitch: 'fastball', way: 'left' }, truth).points).toBe(0)
+  })
+
+  it('doubles the points once you read enough pitches in a row, and resets on a miss', () => {
+    expect(grade({ pitch: 'slider', way: 'down' }, truth, HOT - 2).points).toBe(PERFECT)
+    expect(grade({ pitch: 'slider', way: 'down' }, truth, HOT - 1)).toMatchObject({
+      streak: HOT,
+      points: PERFECT * 2,
+    })
+    expect(grade({ pitch: 'fastball', way: 'down' }, truth, 5)).toMatchObject({
+      streak: 0,
+      points: 1,
+    })
+  })
+
+  it('folds the model\'s spot into a way', () => {
+    expect(modelGuess(truth)).toEqual({ pitch: 'slider', way: 'down' })
   })
 })
 
 group('Session', () => {
   const abs = [
-    atBat('a', [pitch(1, 'fastball', '2', ['fastball', '2']), pitch(2, 'slider', 'chase_down', ['fastball', 'chase_down'])]),
-    atBat('b', [pitch(1, 'changeup', '8', ['sinker', '7'])]),
+    atBat('a', [
+      pitch(1, 'fastball', 'up', ['fastball', '2']),
+      pitch(2, 'slider', 'down', ['fastball', 'chase_down']),
+    ]),
+    atBat('b', [pitch(1, 'changeup', 'down', ['sinker', '7'])]),
   ]
 
   it('walks through every pitch of every at-bat, scoring you and the model', () => {
     const s = new Session(abs)
     expect(s.history).toEqual([])
-    s.call({ pitch: 'fastball', zone: '2' })
+    s.call({ pitch: 'fastball', way: 'up' })
     expect(s.next()).toBe(true)
     expect(s.history.map((p) => p.n)).toEqual([1])
-    s.call({ pitch: 'slider', zone: '5' })
+    s.call({ pitch: 'slider', way: 'left' })
     expect(s.atBatDone).toBe(true)
     expect(s.next()).toBe(true)
     expect(s.atBat.id).toBe('b')
     expect(s.history).toEqual([])
-    s.call({ pitch: 'changeup', zone: '8' })
+    // the third read in a row, across at-bats, counts double
+    s.call({ pitch: 'changeup', way: 'down' })
     expect(s.done).toBe(true)
     expect(s.next()).toBe(false)
-    expect(s.totals()).toEqual({ you: 4 + 2 + 4, model: 4 + 1 + 0, pitches: 3, perfect: 12 })
+    expect(s.totals()).toEqual({
+      you: 4 + 3 + 8,
+      // the model's 7 splits between down and left, and down comes first
+      model: 4 + 1 + 1,
+      pitches: 3,
+      youRead: 3,
+      modelRead: 1,
+      best: 3,
+    })
   })
 
   it('will not let you call a pitch twice or skip one', () => {
     const s = new Session(abs)
     expect(() => s.next()).toThrow()
-    s.call({ pitch: 'fastball', zone: '2' })
-    expect(() => s.call({ pitch: 'fastball', zone: '2' })).toThrow()
+    s.call({ pitch: 'fastball', way: 'up' })
+    expect(() => s.call({ pitch: 'fastball', way: 'up' })).toThrow()
   })
 })
 

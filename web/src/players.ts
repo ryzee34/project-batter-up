@@ -297,14 +297,56 @@ const FOLLOW: Pose = {
   },
 }
 
+/** the made up tells he can show, and the real arm slot, as the 3d pitcher plays them */
+export interface Style {
+  /** 0 hands at the chest at the set, 1 down at the belt */
+  glove: 0 | 1
+  /** 0 a high leg kick, 1 a slide step */
+  kick: 0 | 1
+  /** how far above or below his usual arm slot this one comes from, in his own spreads */
+  tilt: number
+}
+
+export const PLAIN: Style = { glove: 0, kick: 0, tilt: 0 }
+
+function tweak(pose: Pose, joints: Pose['joints']): Pose {
+  return { ...pose, joints: { ...pose.joints, ...joints } }
+}
+
+// hands down at the belt instead of up at the chest
+const SET_LOW = tweak(SET, {
+  rShoulder: [-0.2, 0, 0.3],
+  rElbow: [-1.15, 0, 0],
+  lShoulder: [-0.2, 0, -0.3],
+  lElbow: [-1.15, 0, 0],
+})
+// a slide step: the knee barely comes up and he stays tall
+const LIFT_SLIDE = tweak(LIFT, {
+  rKnee: [0.1, 0, 0],
+  lHip: [-0.55, 0, 0.1],
+  lKnee: [0.6, 0, 0],
+})
+
 /** the delivery, from 0 (set) to 1 (follow through). the ball comes out at 0.8 */
-export function delivery(t: number): Pose {
+export function delivery(t: number, style: Style = PLAIN): Pose {
+  // a higher slot drops the arm side less and lifts the arm more, both exaggerated so
+  // you can see a few inches of real difference from the plate
+  const tilt = style.tilt * 0.14
+  const arm = (pose: Pose): Pose =>
+    tweak(pose, {
+      rShoulder: [
+        pose.joints.rShoulder![0] - tilt * 0.4,
+        pose.joints.rShoulder![1],
+        pose.joints.rShoulder![2] + tilt,
+      ],
+      torso: [pose.joints.torso![0], pose.joints.torso![1], -tilt * 0.6],
+    })
   return along(
     [
-      [0, SET],
-      [0.32, LIFT],
-      [0.62, COCK],
-      [0.8, RELEASE],
+      [0, style.glove ? SET_LOW : SET],
+      [0.32, style.kick ? LIFT_SLIDE : LIFT],
+      [0.62, arm(COCK)],
+      [0.8, arm(RELEASE)],
       [1, FOLLOW],
     ],
     t,

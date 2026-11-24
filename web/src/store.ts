@@ -2,6 +2,7 @@
 // (private windows, previews), so every read and write is allowed to fail quietly
 
 import type { Result } from './daily'
+import type { Notes } from './tells'
 
 const KEY = 'batter-up:daily:v1'
 
@@ -21,5 +22,27 @@ export function saveResult(r: Result): void {
     window.localStorage.setItem(KEY, JSON.stringify(all))
   } catch {
     // not saved, the game still works
+  }
+}
+
+// your notebook on every pitcher you've faced: the cues he showed and what came. it's how
+// the scouts' notes unlock, and it's yours to read for tells they haven't told you about
+
+const NOTES = 'batter-up:notebook:v1'
+
+export function loadNotebook(): Record<string, Notes> {
+  try {
+    const raw = window.localStorage.getItem(NOTES)
+    return raw ? (JSON.parse(raw) as Record<string, Notes>) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveNotebook(all: Record<string, Notes>): void {
+  try {
+    window.localStorage.setItem(NOTES, JSON.stringify(all))
+  } catch {
+    // not saved, the notebook just starts over next visit
   }
 }

@@ -1,6 +1,6 @@
 // today's at-bats: the same three for everyone, picked from the date in los angeles
 
-import { PERFECT, deal, mulberry32, type PitchResult } from './game'
+import { deal, mulberry32, type Grade, type PitchResult } from './game'
 import type { AtBat } from './types'
 
 export const LAUNCH = '2026-11-17'
@@ -27,8 +27,9 @@ export function dailyAtBats(all: AtBat[], key: string, n: number): AtBat[] {
   return deal(pool, n, mulberry32(Number(key.replaceAll('-', ''))))
 }
 
-export function square(points: number): string {
-  return points === PERFECT ? '🟩' : points > 0 ? '🟨' : '⬜'
+/** green for the pitch and where it went, yellow for one of them, white for neither */
+export function square(g: Pick<Grade, 'pitch' | 'way'>): string {
+  return g.pitch && g.way ? '🟩' : g.pitch || g.way ? '🟨' : '⬜'
 }
 
 export interface Result {
@@ -44,7 +45,7 @@ export function result(key: string, results: PitchResult[][]): Result {
     key,
     you: all.reduce((a, r) => a + r.you.points, 0),
     model: all.reduce((a, r) => a + r.model.points, 0),
-    grid: results.map((ab) => ab.map((r) => square(r.you.points)).join('')),
+    grid: results.map((ab) => ab.map((r) => square(r.you)).join('')),
   }
 }
 
