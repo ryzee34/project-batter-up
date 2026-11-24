@@ -1,24 +1,32 @@
-// the strike zone as you see it from behind the plate. the box is the zone, and the frame
-// around it is cut into four chase areas by the lines from its corners to the zone's.
+// the strike zone as you see it from behind the plate, cut into the four ways a pitch can
+// go: up, down, and off either side, which are in and away for whoever is batting. the
+// lines run from the corners of the frame to the middle of the zone, so a pitch belongs to
+// whichever way it's furthest out, the same rule as tells.wayOf.
 // plate_x runs -1.5 to 1.5 ft across the frame and the zone always sits in the middle
 // half vertically, whoever is batting
 
-import { CHASES, PITCHES, sides, spot } from './labels'
-import type { Chase, Pitch, Zone } from './types'
+import { PITCHES, sides } from './labels'
+import { WAYS, wayOf, type Way } from './tells'
+import type { Pitch } from './types'
 
 const HALF_WIDTH = 1.5
 const PLATE_HALF = 0.83
 
 export interface Marks {
-  selected?: Zone
-  you?: Zone
-  model?: Zone
-  heat?: number[]
+  selected?: Way
+  you?: Way
+  model?: Way
+  heat?: Record<Way, number>
   pitch?: Pitch
   history?: Pitch[]
   stands: 'L' | 'R'
 }
 
+/** a way the way a broadcast says it: in and away depend on the batter */
+export function wayName(way: Way, stands: 'L' | 'R'): string {
+  const { left, right } = sides(stands)
+  return { up: 'up', down: 'down', left, right }[way]
+}
 export function position(p: Pitch): { left: number; top: number } {
   const [x, z] = p.plate
   const [bot, top] = p.sz
@@ -37,78 +45,63 @@ function dot(p: Pitch, cls: string, label = ''): string {
   return `<span class="dot ${cls}" style="left:${left}%;top:${top}%;--c:${color}">${label}</span>`
 }
 
+const SHAPES: Record<Way, string> = {
+  up: '0 0, 100% 0, 50% 50%',
+  down: '0 100%, 100% 100%, 50% 50%',
+  left: '0 0, 50% 50%, 0 100%',
+  right: '100% 0, 50% 50%, 100% 100%',
+}
+// the old chase classes put each label in the right part of the frame
+const LABEL_SPOT: Record<Way, string> = {
+  up: 'chase_up',
+  down: 'chase_down',
+  left: 'chase_left',
+  right: 'chase_right',
+}
+
 export function zoneGrid(m: Marks, interactive: boolean): string {
-  // shade relative to the likeliest spot, or a spread out guess looks like no guess
-  const peak = m.heat ? Math.max(...m.heat) : 1
-  const shade = (v: number) => ((v / peak) * 70).toFixed(1)
+  const peak = m.heat ? Math.max(...WAYS.map((w) => m.heat![w])) : 1
+  const truth = m.pitch ? wayOf(m.pitch.plate, m.pitch.sz) : undefined
   const inset = ((HALF_WIDTH - PLATE_HALF) / (2 * HALF_WIDTH)) * 100
-  const attrs = (zone: Zone) => {
-    const label = spot(zone, m.stands)
-    return interactive
-      ? `aria-pressed="${m.selected === zone}" title="${label}" aria-label="${label}"`
+  const areas = WAYS.map((way) => {
+    const label = wayName(way, m.stands)
+    const heat = m.heat ? ((m.heat[way] / peak) * 45).toFixed(1) : 0
+    const attrs = interactive
+      ? `aria-pressed="${m.selected === way}" title="${label}" aria-label="${label}"`
       : 'tabindex="-1" aria-hidden="true"'
-  }
-  const cells = Array.from({ length: 9 }, (_, i) => {
-    const zone = String(i + 1) as Zone
-    const heat = m.heat ? shade(m.heat[i]) : 0
-    return `<button class="cell ${tags(m, zone)}" data-zone="${zone}" ${attrs(zone)}
-      style="--heat:${heat}%">${badges(m, zone)}</button>`
-  }).join('')
-  // each chase area is a trapezoid between the frame and the zone. the big areas get a
-  // lighter shade than a cell with the same odds, or they'd swamp the zone
-  const l = inset
-  const r = 100 - inset
-  const shapes: Record<Chase, string> = {
-    chase_up: `0 0, 100% 0, ${r}% 25%, ${l}% 25%`,
-    chase_down: `0 100%, 100% 100%, ${r}% 75%, ${l}% 75%`,
-    chase_left: `0 0, ${l}% 25%, ${l}% 75%, 0 100%`,
-    chase_right: `100% 0, ${r}% 25%, ${r}% 75%, 100% 100%`,
-  }
-  const where = sides(m.stands)
-  const names: Record<Chase, string> = {
-    chase_up: 'up',
-    chase_down: 'down',
-    chase_left: where.left,
-    chase_right: where.right,
-  }
-  const chases = CHASES.map((zone, i) => {
-    const heat = m.heat ? (Number(shade(m.heat[9 + i])) * 0.6).toFixed(1) : 0
-    return `<button class="chase-area ${zone} ${tags(m, zone)}" data-zone="${zone}" ${attrs(zone)}
-      style="clip-path:polygon(${shapes[zone]});--heat:${heat}%">
-      <span class="chase-label"><span>${names[zone]}</span>${badges(m, zone)}</span>
+    const cls = [m.selected === way ? 'selected' : '', truth === way ? 'truth' : ''].join(' ')
+    return `<button class="chase-area way ${LABEL_SPOT[way]} ${cls}" data-way="${way}" ${attrs}
+      style="clip-path:polygon(${SHAPES[way]});--heat:${heat}%">
+      <span class="chase-label"><span>${label}</span>${badges(m, way)}</span>
     </button>`
   }).join('')
   const seams = [
-    [0, 0, l, 25],
-    [100, 0, r, 25],
-    [0, 100, l, 75],
-    [100, 100, r, 75],
+    [0, 0],
+    [100, 0],
+    [0, 100],
+    [100, 100],
   ]
-    .map(([x1, y1, x2, y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`)
+    .map(([x, y]) => `<line x1="${x}" y1="${y}" x2="50" y2="50"/>`)
     .join('')
   const history = (m.history ?? []).map((p) => dot(p, 'past', String(p.n))).join('')
   const actual = m.pitch ? dot(m.pitch, 'actual') : ''
   return `
     <div class="zone-frame ${interactive ? 'interactive' : ''}" role="group"
-      aria-label="strike zone, catcher's view">
-      ${chases}
+      aria-label="where it crosses the plate, catcher's view">
+      ${areas}
       <svg class="seams" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${seams}</svg>
       <span class="batter-box ${m.stands === 'R' ? 'left' : 'right'}" aria-hidden="true">
         <i></i>${m.stands === 'R' ? 'righty' : 'lefty'}
       </span>
-      <div class="strike-zone" style="left:${inset}%;right:${inset}%">${cells}</div>
+      <div class="strike-zone empty" style="left:${inset}%;right:${inset}%"></div>
       <span class="plate" aria-hidden="true"></span>
       ${history}${actual}
     </div>`
 }
 
-function tags(m: Marks, zone: Zone): string {
-  return [m.selected === zone ? 'selected' : '', m.pitch?.zone === zone ? 'truth' : ''].join(' ')
-}
-
-function badges(m: Marks, zone: Zone): string {
+function badges(m: Marks, way: Way): string {
   const out = []
-  if (m.you === zone) out.push('<i class="badge you">you</i>')
-  if (m.model === zone) out.push('<i class="badge model">model</i>')
+  if (m.you === way) out.push('<i class="badge you">you</i>')
+  if (m.model === way) out.push('<i class="badge model">model</i>')
   return out.length ? `<span class="badges">${out.join('')}</span>` : ''
 }

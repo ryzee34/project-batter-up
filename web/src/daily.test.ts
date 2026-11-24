@@ -27,9 +27,12 @@ describe('daily', () => {
   })
 
   it('shares a spoiler free grid', () => {
-    const r = (you: number, model: number) =>
-      ({ you: { points: you }, model: { points: model } }) as PitchResult
-    const res = result('2026-11-19', [[r(4, 1), r(0, 2)], [r(2, 4)]])
+    const g = (points: number, pitch: boolean, way: boolean) => ({ points, pitch, way, streak: 0 })
+    const r = (you: ReturnType<typeof g>, model: ReturnType<typeof g>) => ({ you, model }) as PitchResult
+    const res = result('2026-11-19', [
+      [r(g(4, true, true), g(1, false, true)), r(g(0, false, false), g(2, false, true))],
+      [r(g(2, false, true), g(4, true, true))],
+    ])
     expect(res).toMatchObject({ you: 6, model: 7, grid: ['🟩⬜', '🟨'] })
     expect(shareText(res)).toBe(
       'batter up #3 ⚾ lost to the model\nme 6 · model 7\n🟩⬜\n🟨\nryzee34.github.io/project-batter-up',

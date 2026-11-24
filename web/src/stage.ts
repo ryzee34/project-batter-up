@@ -10,7 +10,16 @@ import * as THREE from 'three'
 
 import { FRONT_OF_PLATE, flight, type Flight } from './flight'
 import { PITCHES } from './labels'
-import { buildPlayer, delivery, setPose, stance, swing, type Player } from './players'
+import {
+  PLAIN,
+  buildPlayer,
+  delivery,
+  setPose,
+  stance,
+  swing,
+  type Player,
+  type Style,
+} from './players'
 import type { Pitch } from './types'
 
 const PLATE_HALF = 17 / 24
@@ -23,6 +32,8 @@ export const FRAME_HALF = 1.5
 const WINDUP = 1.15
 /** where in the delivery the ball comes out, as a share of the whole motion */
 const RELEASE_AT = 0.8
+/** where the delivery stops while you read it: arm up, just before the ball comes out */
+export const FREEZE = 0.7
 const MOUND_TOP = 0.8
 const RUBBER = 60.5
 
@@ -37,7 +48,8 @@ export interface Rect {
   height: number
 }
 
-type Mode = 'idle' | 'throwing' | 'done'
+/** idle on the mound, reading (the delivery up to the freeze, then held), throwing */
+type Mode = 'idle' | 'reading' | 'throwing' | 'done'
 
 export class Stage {
   readonly canvas: HTMLCanvasElement
@@ -46,6 +58,14 @@ export class Stage {
   private renderer: THREE.WebGLRenderer
   private scene = new THREE.Scene()
   private camera = new THREE.PerspectiveCamera(12, 4 / 3, 1, 1400)
+  /** a tight shot of the pitcher, drawn in a corner while you read him */
+  private pitcherCam = new THREE.PerspectiveCamera(6, 0.8, 1, 400)
+  /** draw the pitcher cam in the corner */
+  showCam = false
+  private style: Style = PLAIN
+  /** seconds he holds the set before he starts his motion */
+  private hold = 0.5
+  private onRead: (() => void) | null = null
   private ball: THREE.Mesh
   private trail: THREE.Line
   private pitcher: Player
@@ -346,6 +366,9 @@ export class Stage {
   /** back to the set position, ball in the glove, for the next pitch */
   ready(p: Pitch, throws: 'L' | 'R', stands: 'L' | 'R'): void {
     this.mode = 'idle'
+    this.style = PLAIN
+    this.hold = 0.5
+    this.onRead = null
     this.pitch = null
     this.flight = null
     this.ball.visible = false
@@ -354,9 +377,35 @@ export class Stage {
     this.setZone(p.sz)
   }
 
+  /** the read: he comes set showing this pitch's tells, holds, starts his motion and
+   * stops just before he lets go. `read` fires when he's stopped. a throw of the same
+   * pitch picks up from there */
+  read(
+    p: Pitch,
+    throws: 'L' | 'R',
+    stands: 'L' | 'R',
+    style: Style,
+    hold: number,
+    read: () => void,
+  ): void {
+    this.ready(p, throws, stands)
+    this.style = style
+    this.hold = hold
+    this.pitch = p
+    this.matchRelease(p)
+    this.onRead = read
+    this.mode = 'reading'
+    this.started = performance.now()
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.started -= (hold + WINDUP * FREEZE) * 1000
+    }
+  }
+
   /** the pitch: windup, then the real flight at full speed. `landed` fires when it
    * reaches the plate, then it plays again slowed down with its path traced */
   throw(p: Pitch, throws: 'L' | 'R', stands: 'L' | 'R', landed: () => void): void {
+    const fromRead = this.mode === 'reading' && this.pitch === p
+    this.onRead = null
     this.setPlayers(throws, stands)
     this.setZone(p.sz)
     this.pitch = p
@@ -368,23 +417,36 @@ export class Stage {
     this.matchRelease(p)
     this.mode = 'throwing'
     this.started = performance.now()
+    // carry on from where the read stopped, so the arm doesn't go back to the set
+    if (fromRead) this.started -= (this.hold + WINDUP * FREEZE) * 1000
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.started -= this.timeline().end * 1000
     }
   }
 
-  /** watch it again from the windup */
+  /** watch it again from the set */
   replay(): void {
     if (!this.pitch) return
     this.onLanded = null
+    if (this.mode === 'reading') {
+      this.started = performance.now()
+      return
+    }
     this.mode = 'throwing'
     this.started = performance.now()
+  }
+
+  /** where the pitcher cam sits on the canvas, in css pixels */
+  camRect(): Rect {
+    const w = this.canvas.clientWidth
+    const width = Math.round(Math.min(240, Math.max(110, w * 0.26)))
+    return { left: 10, top: 10, width, height: Math.round(width * 1.25) }
   }
 
   // slide the pitcher so his hand is where statcast saw the ball come out
   private matchRelease(p: Pitch): void {
     this.pitcherSpot.position.copy(v(0, RUBBER, MOUND_TOP))
-    setPose(this.pitcher, delivery(RELEASE_AT))
+    setPose(this.pitcher, delivery(RELEASE_AT, this.style))
     this.scene.updateMatrixWorld(true)
     const hand = this.pitcher.ballHand.getWorldPosition(new THREE.Vector3())
     const want = v(p.release[0], p.release[1], p.release[2])
@@ -397,7 +459,7 @@ export class Stage {
   private timeline() {
     const f = this.flight!
     const fly = f.plate - f.release
-    const release = WINDUP * RELEASE_AT
+    const release = this.hold + WINDUP * RELEASE_AT
     const land = release + fly
     const slowStart = land + 0.7
     const slowEnd = slowStart + fly / SLOW
@@ -412,18 +474,61 @@ export class Stage {
       const t = now / 1000
       setPose(this.pitcher, delivery(0), Math.sin(t * 1.6) * 0.03)
       setPose(this.batter, stance(), Math.sin(t * 2.3) * 0.06)
+    } else if (this.mode === 'reading') {
+      this.reading((now - this.started) / 1000, now / 1000)
     } else if (this.flight) {
       this.animate((now - this.started) / 1000)
     }
     void dt
+    this.renderer.setScissorTest(false)
+    this.renderer.setViewport(0, 0, this.canvas.clientWidth, this.canvas.clientHeight)
     this.renderer.render(this.scene, this.camera)
+    if (this.showCam) this.drawCam()
+  }
+
+  /** the delivery up to the freeze, then held there with the ball still in his hand */
+  private reading(s: number, t: number): void {
+    const u = (s - this.hold) / WINDUP
+    const breathe = u < 0 ? Math.sin(t * 1.6) * 0.02 : 0
+    setPose(this.pitcher, delivery(Math.max(0, Math.min(FREEZE, u)), this.style), breathe)
+    setPose(this.batter, stance(), Math.sin(t * 2.3) * 0.06)
+    if (u >= FREEZE && this.onRead) {
+      const done = this.onRead
+      this.onRead = null
+      done()
+    }
+  }
+
+  /** the pitcher cam: the same spot behind the plate with a much longer lens */
+  private drawCam(): void {
+    const r = this.camRect()
+    const h = this.canvas.clientHeight
+    const cam = this.pitcherCam
+    const at = this.pitcherSpot.getWorldPosition(new THREE.Vector3())
+    // he strides about 4 ft toward the plate, so aim a little in front of the rubber
+    const target = new THREE.Vector3(at.x, at.y + 4.2, at.z + 1.8)
+    cam.position.copy(v(0, -34, 4.6))
+    cam.aspect = r.width / r.height
+    const dist = cam.position.distanceTo(target)
+    cam.fov = THREE.MathUtils.radToDeg(2 * Math.atan(4.4 / dist))
+    cam.lookAt(target)
+    cam.updateProjectionMatrix()
+    const y = h - r.top - r.height
+    this.renderer.setScissorTest(true)
+    this.renderer.setScissor(r.left, y, r.width, r.height)
+    this.renderer.setViewport(r.left, y, r.width, r.height)
+    // the batter would block the view, so he steps out of this shot
+    this.batter.root.visible = false
+    this.renderer.render(this.scene, cam)
+    this.batter.root.visible = true
+    this.renderer.setScissorTest(false)
   }
 
   private animate(s: number): void {
     const f = this.flight!
     const tl = this.timeline()
     // the pitcher's motion runs once from the start, then holds the follow through
-    setPose(this.pitcher, delivery(Math.min(1, s / WINDUP)))
+    setPose(this.pitcher, delivery(Math.max(0, Math.min(1, (s - this.hold) / WINDUP)), this.style))
     // the batter swings when the real batter did, timed to meet the ball at the plate
     const swingStart = tl.land - 0.22
     setPose(

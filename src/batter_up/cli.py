@@ -147,6 +147,33 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_scout(args: argparse.Namespace) -> int:
+    import json
+
+    import pandas as pd
+
+    from batter_up.scout import scout
+
+    path = paths.WEB_DATA / "atbats.json"
+    if not path.exists():
+        raise SystemExit("no at-bats yet, run batter-up export first")
+    payload = json.loads(path.read_text())
+    ids = sorted({ab["pitcher"]["id"] for ab in payload["atBats"]})
+    seasons = [y for y in range(2023, payload["season"])]
+    files = [paths.INTERIM / f"pitches_{y}.parquet" for y in seasons]
+    files = [f for f in files if f.exists()]
+    if not files:
+        raise SystemExit("no cleaned seasons before the test season, run fetch and build first")
+    pitches = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    book = scout(pitches, ids, sorted(int(y) for y in pitches["game_year"].unique()))
+    out = paths.WEB_DATA / "scouting.json"
+    out.write_text(json.dumps(book, separators=(",", ":")), encoding="utf-8")
+    missing = len(ids) - len(book["pitchers"])
+    size = out.stat().st_size / 1024
+    print(f"{len(book['pitchers'])} pitchers, {missing} with no book -> {out.name} ({size:.0f} KB)")
+    return 0
+
+
 def cmd_commentary(args: argparse.Namespace) -> int:
     import json
 
@@ -235,6 +262,9 @@ def build_parser() -> argparse.ArgumentParser:
     exp.add_argument("--at-bats", type=int, default=40)
     exp.add_argument("--team", default="LAD")
     exp.set_defaults(func=cmd_export)
+
+    book = sub.add_parser("scout", help="write the scouting book on every pitcher in the game")
+    book.set_defaults(func=cmd_scout)
 
     talk = sub.add_parser("commentary", help="get claude to write booth lines for every pitch")
     talk.add_argument("--check", action="store_true", help="check commentary.json covers it all")

@@ -3,23 +3,61 @@ import '@fontsource/barlow-condensed/latin-600.css'
 import '@fontsource/barlow-condensed/latin-700.css'
 import './style.css'
 
-import { PERFECT, Session, deal, describe, mulberry32, type Guess, type PitchResult } from './game'
+import {
+  HOT,
+  POINTS,
+  Session,
+  deal,
+  describe,
+  modelGuess,
+  mulberry32,
+  type Grade,
+  type Guess,
+  type PitchResult,
+} from './game'
 import { shareCard } from './card'
 import { dailyAtBats, dayKey, dayNumber, result, shareText, streak, type Result } from './daily'
-import { loadResults, saveResult } from './store'
+import { loadNotebook, loadResults, saveNotebook, saveResult } from './store'
 import { PITCHES, PITCH_ORDER, escape, ordinal, pct, spot } from './labels'
 import type { Stage } from './stage'
-import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall, Zone } from './types'
-import { zoneGrid } from './zone'
+import {
+  CUES,
+  CUE_KINDS,
+  TIERS,
+  UNLOCK,
+  bookLines,
+  cuesFor,
+  emptyNotes,
+  pointsTo,
+  record,
+  repertoire,
+  slotFit,
+  slotTilt,
+  tellsFor,
+  tierOf,
+  unlocked,
+  wayOdds,
+  wayOf,
+  type Cues,
+  type Notes,
+  type PitcherBook,
+  type Scouting,
+  type Tell,
+  type Way,
+} from './tells'
+import type { AtBat, Commentary, GameData, ModelSummary, Pitch, PitchCall } from './types'
+import { wayName, zoneGrid } from './zone'
 
 const AT_BATS_PER_GAME = 3
-// arrows point at the side of the zone a chase misses on, as the catcher sees it
-const ARROWS: Record<string, Zone> = {
-  ArrowUp: 'chase_up',
-  ArrowDown: 'chase_down',
-  ArrowLeft: 'chase_left',
-  ArrowRight: 'chase_right',
+// the arrows point the way the pitch goes, as the catcher sees it
+const ARROWS: Record<string, Way> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
 }
+/** seconds he holds the set, for a quick set and a long one */
+const HOLDS = [0.35, 1.6]
 
 /** calling: you're picking. pitching: the windup and the throw. reveal: how you did */
 type Phase = 'title' | 'calling' | 'pitching' | 'reveal' | 'done'
@@ -28,11 +66,15 @@ interface State {
   data: GameData
   summary: ModelSummary | null
   booth: Commentary | null
+  book: Scouting | null
   session: Session | null
   mode: 'daily' | 'practice'
   today: string
   phase: Phase
   pick: Partial<Guess>
+  /** he's finished his motion up to the freeze, so the cues are all showing */
+  readDone: boolean
+  notes: Record<string, Notes>
   last: PitchResult | null
 }
 
@@ -89,16 +131,69 @@ function syncStage(s: Stage): void {
     staged = key
     return
   }
+  s.showCam = true
   const ab = session.atBat
-  const key = `${ab.id}:${session.pitch.n}`
+  const p = session.pitch
+  const key = `${ab.id}:${p.n}`
   if (state.phase === 'calling' && staged !== key) {
-    s.ready(session.pitch, ab.pitcher.throws, ab.batter.stands)
     staged = key
+    startRead(s)
   }
 }
 
+/** he comes set and starts his motion, showing this pitch's tells, and stops before he lets go */
+function startRead(s: Stage): void {
+  const session = state.session!
+  const ab = session.atBat
+  const p = session.pitch
+  const cues = currentCues()
+  const style = { glove: cues.glove, kick: cues.kick, tilt: slotTilt(p, bookFor(ab)) }
+  s.read(p, ab.pitcher.throws, ab.batter.stands, style, HOLDS[cues.hold], () => {
+    if (state.phase !== 'calling' || state.session?.pitch !== p || state.readDone) return
+    state.readDone = true
+    render()
+  })
+}
+
+function watchAgain(): void {
+  if (state.phase !== 'calling') return
+  if (!stage || stageBroken) return
+  state.readDone = false
+  startRead(stage)
+  render()
+}
+
+// the scouting: his real book, his made up tells, and your notebook on him
+
+function bookFor(ab: AtBat): PitcherBook | undefined {
+  return state.book?.pitchers[String(ab.pitcher.id)]
+}
+
+function tellsOf(ab: AtBat): Tell[] {
+  const book = bookFor(ab)
+  return tellsFor(ab.pitcher.id, repertoire(ab, book), tierOf(book))
+}
+
+function currentCues(): Cues {
+  const s = state.session!
+  return cuesFor(s.atBat, s.pitch, tellsOf(s.atBat), tierOf(bookFor(s.atBat)))
+}
+
+function notesOn(ab: AtBat): Notes {
+  return state.notes[String(ab.pitcher.id)] ?? emptyNotes()
+}
+
+
 /** line the clickable zone up with the one in the ballpark */
 function placeZone(): void {
+  const cam = document.querySelector<HTMLElement>('.cam-frame')
+  if (cam && stage) {
+    const c = stage.camRect()
+    cam.style.left = `${c.left}px`
+    cam.style.top = `${c.top}px`
+    cam.style.width = `${c.width}px`
+    cam.style.height = `${c.height}px`
+  }
   const el = document.querySelector<HTMLElement>('.zone-overlay')
   if (!el || !stage || !el.isConnected || stage.canvas.parentElement !== el.parentElement) return
   const r = stage.frame()
@@ -116,21 +211,26 @@ async function load<T>(name: string): Promise<T> {
 
 async function boot(): Promise<void> {
   try {
-    const [data, summary, booth] = await Promise.all([
+    const [data, summary, booth, book] = await Promise.all([
       load<GameData>('atbats.json'),
       load<ModelSummary>('model.json').catch(() => null),
       // claude's lines are optional, the game plays fine without them
       load<Commentary>('commentary.json').catch(() => null),
+      // the book is optional too, without it you only have the tells
+      load<Scouting>('scouting.json').catch(() => null),
     ])
     state = {
       data,
       summary,
       booth,
+      book,
       session: null,
       mode: 'daily',
       today: dayKey(),
       phase: 'title',
       pick: {},
+      readDone: false,
+      notes: loadNotebook(),
       last: null,
     }
     render()
@@ -178,14 +278,14 @@ function renderTitle(): string {
     <section class="card title">
       <p class="eyebrow">${escape(state.data.team)} · ${state.data.season} season</p>
       <h1 class="wordmark">batter up</h1>
-      <p class="lede">call the next pitch in real at-bats, before it's thrown. a model calls it too. try to beat it.</p>
+      <p class="lede">read the pitcher and call the next pitch in real at-bats, before it's thrown. a model calls it too. try to beat it.</p>
       <ol class="how">
-        <li><b>tap where it's going</b><span>right on the zone, or around it for a chase. his go-to pitch is already picked, change it if you know better</span></li>
-        <li><b>hit ready</b><span>he winds up and throws the real pitch, on its real path</span></li>
-        <li><b>see who called it</b><span>you, the model, or neither</span></li>
+        <li><b>watch him come set</b><span>every pitcher gives something away in his delivery: where his glove sits, how high he kicks, how long he holds, where his arm comes from. it stops just before he lets go</span></li>
+        <li><b>call the pitch and where it goes</b><span>use what he showed, his real scouting book and your own notes on him. the more you face him, the more the scouts tell you</span></li>
+        <li><b>hit ready</b><span>he throws the real pitch, on its real path, and you see who read it</span></li>
       </ol>
       ${stats}
-      <p class="rules"><span><b>2</b> right pitch</span><span><b>1</b> right spot</span><span><b>+1</b> both</span><span class="muted">${PERFECT} is perfect</span></p>
+      <p class="rules"><span><b>${POINTS.pitch}</b> right pitch</span><span><b>${POINTS.way}</b> up, down, in or away</span><span><b>×2</b> after ${HOT} reads in a row</span></p>
       ${dailyBox()}
     </section>`
 }
@@ -291,37 +391,21 @@ function matchup(ab: AtBat): string {
     </section>`
 }
 
-/** his mix against this side of the plate, or overall when he has no history vs them */
-function mixFor(ab: AtBat): Partial<Record<PitchCall, number>> {
-  return Object.keys(ab.pitcher.mixVsSide).length ? ab.pitcher.mixVsSide : ab.pitcher.mix
-}
-
-/** his go-to pitch, which your call starts on so all you have to pick is the spot */
-function favorite(ab: AtBat): PitchCall {
-  const mix = mixFor(ab)
-  const thrown = PITCH_ORDER.filter((c) => (mix[c] ?? 0) > 0)
-  if (!thrown.length) return 'fastball'
-  return thrown.reduce((a, b) => (mix[b]! > mix[a]! ? b : a))
-}
-
 function pitchPicker(ab: AtBat, selected: PitchCall | undefined, locked: boolean): string {
-  const mix = mixFor(ab)
-  const side = ab.batter.stands === 'L' ? 'lefties' : 'righties'
-  const thrown = PITCH_ORDER.filter((c) => (mix[c] ?? 0) > 0).sort((a, b) => mix[b]! - mix[a]!)
-  const shown = thrown.length ? thrown : PITCH_ORDER
-  const never = PITCH_ORDER.filter((c) => !shown.includes(c))
+  const mine = repertoire(ab, bookFor(ab))
+  const shown = mine.length ? mine : PITCH_ORDER
+  const rare = PITCH_ORDER.filter((c) => !shown.includes(c))
   const chip = (c: PitchCall, mini = false) => `
     <button class="pitch ${mini ? 'mini' : ''} ${selected === c ? 'selected' : ''}" data-pitch="${c}"
       style="--c:${PITCHES[c].color}" aria-pressed="${selected === c}" ${locked ? 'disabled' : ''}>
       <span class="swatch"></span><span class="name">${c}</span>
-      ${mini ? '' : `<span class="pct">${pct(mix[c] ?? 0)}</span>`}
       <kbd>${PITCHES[c].key}</kbd>
     </button>`
-  const rare = never.length
-    ? `<details class="never"><summary>${never.length} he's never thrown to ${side}</summary>
-        <div class="pitches">${never.map((c) => chip(c, true)).join('')}</div></details>`
+  const others = rare.length
+    ? `<details class="never"><summary>${rare.length} he hardly ever throws</summary>
+        <div class="pitches">${rare.map((c) => chip(c, true)).join('')}</div></details>`
     : ''
-  return `<div class="pitches">${shown.map((c) => chip(c)).join('')}</div>${rare}`
+  return `<div class="pitches">${shown.map((c) => chip(c)).join('')}</div>${others}`
 }
 
 function pitchLog(ab: AtBat, history: Pitch[], results: PitchResult[]): string {
@@ -333,44 +417,44 @@ function pitchLog(ab: AtBat, history: Pitch[], results: PitchResult[]): string {
         <span class="n">${p.n}</span>
         <span class="chip">${PITCHES[p.pitch].short}</span>
         <span class="what">${p.mph} · ${spot(p.zone, ab.batter.stands)} · ${describe(p.result)}</span>
-        ${r ? `<span class="marks" title="you ${r.you.points}, model ${r.model.points}">${square(r.you.points)}${square(r.model.points)}</span>` : ''}
+        ${r ? `<span class="marks" title="you ${r.you.points}, model ${r.model.points}">${square(r.you)}${square(r.model)}</span>` : ''}
       </li>`
     })
     .join('')
   return `<ol class="log">${items}</ol>`
 }
 
-function square(points: number): string {
-  return `<i class="sq ${points === PERFECT ? 'full' : points > 0 ? 'part' : 'none'}"></i>`
+function square(g: Pick<Grade, 'pitch' | 'way'>): string {
+  return `<i class="sq ${g.pitch && g.way ? 'full' : g.pitch || g.way ? 'part' : 'none'}"></i>`
 }
 
 function compare(r: PitchResult, you: Guess, model: Guess, stands: 'L' | 'R'): string {
   const p = r.pitch
   const cell = (text: string, right: boolean) =>
     `<td class="${right ? 'right' : 'wrong'}"><span class="mark">${right ? '✓' : '✗'}</span>${text}</td>`
-  const row = (who: 'you' | 'model', g: Guess, grade: PitchResult['you']) => `
+  const row = (who: 'you' | 'model', g: Guess, grade: Grade) => `
     <tr class="${who}">
       <th>${who}</th>
       ${cell(g.pitch, grade.pitch)}
-      ${cell(spot(g.zone, stands), grade.zone)}
-      <td class="pts ${grade.points === PERFECT ? 'perfect' : grade.points ? 'some' : ''}">+${grade.points}</td>
+      ${cell(wayName(g.way, stands), grade.way)}
+      <td class="pts ${grade.pitch && grade.way ? 'perfect' : grade.points ? 'some' : ''}">+${grade.points}</td>
     </tr>`
   return `
     <table class="compare">
-      <thead><tr><th></th><th>pitch</th><th>spot</th><th>pts</th></tr></thead>
+      <thead><tr><th></th><th>pitch</th><th>went</th><th>pts</th></tr></thead>
       <tbody>
-        <tr class="actual"><th>actual</th><td>${p.pitch}</td><td>${spot(p.zone, stands)}</td><td></td></tr>
+        <tr class="actual"><th>actual</th><td>${p.pitch}</td><td>${wayName(wayOf(p.plate, p.sz), stands)}</td><td></td></tr>
         ${row('you', you, r.you)}
         ${row('model', model, r.model)}
       </tbody>
     </table>`
 }
 
-function verdictLine(g: PitchResult['you']): string {
-  if (g.points === PERFECT) return 'nailed it'
-  if (g.pitch) return 'right pitch, wrong spot'
-  if (g.zone) return 'right spot, wrong pitch'
-  return 'missed this one'
+function verdictLine(g: Grade): string {
+  if (g.pitch && g.way) return 'read it'
+  if (g.pitch) return 'right pitch'
+  if (g.way) return 'right way, wrong pitch'
+  return 'he fooled you'
 }
 
 function odds(p: Pitch): string {
@@ -406,9 +490,10 @@ function renderGame(): string {
     <section class="arena ${state.phase}">
       <div class="stage ${stage ? 'live' : ''}" id="stage">
         <div class="zone-overlay">${overlay()}</div>
+        <div class="cam-frame" aria-hidden="true"><span>pitcher cam</span></div>
         ${stageHud()}
       </div>
-      <aside class="side">${reveal ? revealPanel() : callPanel()}</aside>
+      <aside class="side">${reveal ? revealPanel() : callPanel()}${scoutPanel()}</aside>
     </section>`
 }
 
@@ -419,9 +504,9 @@ function overlay(): string {
     const r = state.last!
     return zoneGrid(
       {
-        you: state.pick.zone,
-        model: r.pitch.model.call[1],
-        heat: r.pitch.model.zone,
+        you: state.pick.way,
+        model: modelGuess(r.pitch).way,
+        heat: wayOdds(r.pitch.model.zone),
         pitch: r.pitch,
         history: s.history,
         stands,
@@ -431,8 +516,8 @@ function overlay(): string {
   }
   return zoneGrid(
     {
-      selected: state.pick.zone,
-      you: state.phase === 'pitching' ? state.pick.zone : undefined,
+      selected: state.pick.way,
+      you: state.phase === 'pitching' ? state.pick.way : undefined,
       history: s.history,
       stands,
     },
@@ -442,53 +527,169 @@ function overlay(): string {
 
 function stageHud(): string {
   if (state.phase === 'calling') {
-    return state.pick.zone
+    if (!state.readDone && stage && !stageBroken) {
+      return `<p class="stage-toast reading">watch him come set</p>`
+    }
+    const again = stage && !stageBroken
+      ? `<button class="stage-replay" data-action="watch" aria-label="watch his delivery again">↻ watch again</button>`
+      : ''
+    const hint = state.pick.way
       ? ''
-      : `<p class="stage-hint"><b>tap where it crosses the plate</b><span>in the zone, or around it for a chase</span></p>`
+      : `<p class="stage-hint"><b>tap where it's going</b><span>up, down, in or away</span></p>`
+    return hint + again
   }
   if (state.phase === 'pitching') {
     return `<p class="stage-toast">here it comes</p>`
   }
   const r = state.last!
-  const grade = r.you.points === PERFECT ? 'perfect' : r.you.points ? 'part' : 'miss'
+  const grade = r.you.pitch && r.you.way ? 'perfect' : r.you.points ? 'part' : 'miss'
   return `
     <p class="stage-flash ${grade}"><b>+${r.you.points}</b>${verdictLine(r.you)}</p>
     <button class="stage-replay" data-action="replay" aria-label="replay the pitch">↻ replay</button>
     <span class="stage-legend"><i class="you"></i>you <i class="model"></i>model</span>`
 }
 
+/** what he showed on this pitch: the three made up cues and his real arm slot */
+function readout(p: Pitch, ab: AtBat, cues: Cues): string {
+  const book = bookFor(ab)
+  const chips = CUE_KINDS.map(
+    (k) => `<li><small>${CUES[k].name}</small><b>${CUES[k].levels[cues[k]]}</b></li>`,
+  )
+  const fit = slotFit(p, book)
+  if (fit.length >= 2) {
+    // only call it when one pitch's slot is clearly closer than the next
+    const clear = fit[1].distance - fit[0].distance > 0.6
+    chips.push(
+      `<li class="real"><small>arm slot <i>real</i></small><b>${clear ? `like his ${fit[0].call}` : 'his usual'}</b></li>`,
+    )
+  }
+  return `<ul class="cues">${chips.join('')}</ul>`
+}
+
 function callPanel(): string {
   const s = state.session!
   const ab = s.atBat
   const stands = ab.batter.stands
-  const { pitch, zone } = state.pick
+  const { pitch, way } = state.pick
   const locked = state.phase === 'pitching'
+  const showing = state.readDone || !stage || stageBroken || locked
+  const read = showing
+    ? readout(s.pitch, ab, currentCues())
+    : `<p class="muted small reading-note">watch his delivery. it stops just before he lets go</p>`
   const call = pitch
     ? `<span class="call-pitch" style="--c:${PITCHES[pitch].color}">${pitch}</span>`
     : '<span class="muted">pick a pitch</span>'
-  const where = zone
-    ? `<span class="call-spot">${spot(zone, stands)}</span>`
+  const where = way
+    ? `<span class="call-spot">${wayName(way, stands)}</span>`
     : '<span class="muted">tap the zone</span>'
   const button = locked
     ? `<button class="primary ready" disabled>watch the pitch…</button>`
-    : pitch && zone
-      ? `<button class="primary ready" data-action="call">ready <small>${pitch} · ${spot(zone, stands)}</small></button>`
-      : `<button class="primary ready" disabled>tap a spot first</button>`
+    : pitch && way
+      ? `<button class="primary ready" data-action="call">ready <small>${pitch} · ${wayName(way, stands)}</small></button>`
+      : `<button class="primary ready" disabled>${pitch ? 'tap where it goes' : 'pick a pitch'}</button>`
+  const streakNote = streakLine()
   return `
     <div class="panel call ${locked ? 'locked' : ''}">
-      <p class="eyebrow">pitch ${s.pitch.n} · ${s.pitch.count} count</p>
-      <h2 class="ask">what's coming?</h2>
+      <p class="eyebrow">pitch ${s.pitch.n} · ${s.pitch.count} count${streakNote}</p>
+      <h2 class="ask">read him</h2>
+      <div class="read">${read}</div>
+      <div class="pitch-pick">${pitchPicker(ab, pitch, locked)}</div>
+      ${pitch ? goesLine(ab, pitch) : ''}
       <p class="your-call"><small>your call</small>${call}${where}</p>
-      <div class="pitch-pick">
-        <p class="note">his go-to is picked. switch if you know better</p>
-        ${pitchPicker(ab, pitch, locked)}
-      </div>
       <div class="call-bar">${button}</div>
-      <p class="keys"><kbd>1</kbd>–<kbd>9</kbd> zone <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> chase <kbd>enter</kbd> ready</p>
+      <p class="keys"><kbd>${PITCHES.fastball.key}</kbd><kbd>${PITCHES.slider.key}</kbd>… pitch <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> where <kbd>w</kbd> watch again <kbd>enter</kbd> ready</p>
     </div>
     <div class="panel so-far ${s.history.length ? '' : 'empty'}">
       <h3>this at-bat so far</h3>
       ${pitchLog(ab, s.history, s.results[s.atBatIndex])}
+    </div>`
+}
+
+function streakLine(): string {
+  const last = state.session!.results.flat().at(-1)
+  const run = last?.you.streak ?? 0
+  if (run >= HOT) return ` · <b class="hot">${run} in a row, double points</b>`
+  if (run > 0) return ` · ${run} in a row`
+  return ''
+}
+
+/** where the pitch you picked goes against this side, from his book */
+function goesLine(ab: AtBat, pitch: PitchCall): string {
+  const loc = bookFor(ab)?.sides[ab.batter.stands].location[pitch]
+  if (!loc || !Object.keys(loc).length) return ''
+  const side = ab.batter.stands === 'L' ? 'lefties' : 'righties'
+  const parts = (Object.entries(loc) as [Way, number][])
+    .sort((a, b) => b[1] - a[1])
+    .map(([w, v]) => `${wayName(w, ab.batter.stands)} <b>${pct(v)}</b>`)
+  return `<p class="goes">his ${pitch} to ${side}: ${parts.join(' · ')}</p>`
+}
+
+/** a bar of his pitches. shares show as percents, or `counts` show as plain numbers */
+function mixBar(mix: Partial<Record<PitchCall, number>>, counts = false): string {
+  const parts = (Object.entries(mix) as [PitchCall, number][]).sort((a, b) => b[1] - a[1])
+  const segs = parts
+    .map(([c, v]) => `<i style="flex:${v};--c:${PITCHES[c].color}" title="${c} ${pct(v)}"></i>`)
+    .join('')
+  const words = parts
+    .slice(0, 3)
+    .map(([c, v]) => `<span style="--c:${PITCHES[c].color}">${c} ${counts ? v : pct(v)}</span>`)
+    .join('')
+  return `<span class="mix-bar">${segs}</span><span class="mix-words">${words}</span>`
+}
+
+/** what you know about him: the tier, the scouts' notes, your notebook, and his real book */
+function scoutPanel(): string {
+  const s = state.session!
+  const ab = s.atBat
+  const book = bookFor(ab)
+  const tier = TIERS[tierOf(book)]
+  const tells = tellsOf(ab)
+  const notes = notesOn(ab)
+  const mine = repertoire(ab, book)
+  const known = unlocked(notes.seen, tells)
+  const scoutNotes = known.map(
+    (t) =>
+      `<li><b>${CUES[t.kind].name}</b>: ${[0, 1]
+        .map((l) => `${CUES[t.kind].levels[l]} → ${pointsTo(t, l as 0 | 1, mine).join(' or ') || 'nothing'}`)
+        .join(', ')}</li>`,
+  )
+  const nextAt = UNLOCK[known.length]
+  if (known.length < tells.length && nextAt !== undefined) {
+    const left = nextAt - notes.seen
+    scoutNotes.push(
+      `<li class="muted">the scouts will have his ${known.length ? 'next' : 'first'} tell after ${left} more pitch${left === 1 ? '' : 'es'}. until then, spot it yourself</li>`,
+    )
+  } else if (known.length === tells.length) {
+    scoutNotes.push(
+      `<li class="muted">that's all he tips. it shows about ${pct(tier.honest + (1 - tier.honest) / 2)} of the time, the rest is a bluff</li>`,
+    )
+  }
+  const notebook = notes.seen
+    ? `<table class="notebook">
+        <tbody>${CUE_KINDS.map(
+          (k) => `
+          <tr><th rowspan="2">${CUES[k].name}</th><td>${CUES[k].levels[0]}</td><td>${mixBar(notes.cues[k][0], true)}</td></tr>
+          <tr><td>${CUES[k].levels[1]}</td><td>${mixBar(notes.cues[k][1], true)}</td></tr>`,
+        ).join('')}</tbody>
+      </table>`
+    : '<p class="muted small">nothing yet. every pitch you see from him goes in here, with what he showed before it</p>'
+  const lines = state.book
+    ? bookLines(book, state.book.buckets, ab, s.pitch, s.history.at(-1))
+    : []
+  const bookHtml = lines.length
+    ? `<ul class="book">${lines.map((l) => `<li><small>${escape(l.label)}</small>${mixBar(l.mix)}</li>`).join('')}</ul>
+       ${book ? `<p class="muted small">from ${book.pitches.toLocaleString()} real pitches, ${state.book!.seasons[0]}-${state.book!.seasons.at(-1)}. his arm slot alone names the pitch ${pct(book.slotRead)} of the time</p>` : ''}`
+    : '<p class="muted small">no book on him from earlier seasons</p>'
+  return `
+    <div class="panel scout">
+      <h3>the book on ${escape(ab.pitcher.name)} <span class="tier t${tierOf(book)}" title="${tier.blurb}">${tier.name}</span></h3>
+      <p class="muted small">${tier.blurb}</p>
+      <h4>scouts' notes</h4>
+      <ul class="notes">${scoutNotes.join('')}</ul>
+      <h4>your notebook <small>${notes.seen} pitch${notes.seen === 1 ? '' : 'es'} seen</small></h4>
+      ${notebook}
+      <h4>his real tendencies</h4>
+      ${bookHtml}
     </div>`
 }
 
@@ -498,8 +699,8 @@ function revealPanel(): string {
   const p = r.pitch
   const ab = s.atBat
   const stands = ab.batter.stands
-  const you = { pitch: state.pick.pitch!, zone: state.pick.zone! }
-  const model = { pitch: p.model.call[0], zone: p.model.call[1] }
+  const you = { pitch: state.pick.pitch!, way: state.pick.way! }
+  const model = modelGuess(p)
   const lines = state.booth?.atBats[ab.id]
   const line = lines?.pitches[s.pitchIndex]
   const booth = line
@@ -510,6 +711,14 @@ function revealPanel(): string {
     ? `<div class="ending"><p class="eyebrow">at-bat over · ${escape(ab.result)}</p><p>${escape(ab.des)}</p>${wrap}</div>`
     : ''
   const nextLabel = s.done ? 'see how you did' : s.atBatDone ? 'next at-bat' : 'next pitch'
+  const run = r.you.streak
+  const hot = run >= HOT
+    ? `<p class="streak hot">${run} reads in a row. double points until you miss</p>`
+    : run > 0
+      ? `<p class="streak">${run} in a row. ${HOT - run} more for double points</p>`
+      : ''
+  const cues = cuesFor(ab, p, tellsOf(ab), tierOf(bookFor(ab)))
+  const showed = CUE_KINDS.map((k) => CUES[k].levels[cues[k]]).join(' · ')
   return `
     <div class="panel result">
       <div class="pitch-card" style="--c:${PITCHES[p.pitch].color}">
@@ -518,12 +727,14 @@ function revealPanel(): string {
         <p>${spot(p.zone, stands)} · <b>${describe(p.result)}</b>${p.spin ? ` · ${p.spin} rpm` : ''}</p>
       </div>
       ${compare(r, you, model, stands)}
+      ${hot}
+      <p class="showed"><small>he showed</small>${showed} <span class="muted">→ ${p.pitch}, in your notebook</span></p>
       ${booth}
       ${ending}
       <details class="model-odds">
         <summary>what the model saw coming</summary>
         ${odds(p)}
-        <p class="muted small">shading on the zone is where it thought the pitch would go</p>
+        <p class="muted small">the model only knows the situation, not his tells. shading on the zone is where it thought the pitch would go</p>
       </details>
       <div class="call-bar"><button class="primary" data-action="next">${nextLabel}</button></div>
     </div>`
@@ -544,8 +755,8 @@ function renderDone(): string {
     .map(
       (ab, i) => `<li>
         <div class="who"><b>${escape(ab.pitcher.name)}</b> vs <b>${escape(ab.batter.name)}</b> <span class="muted">· ${escape(ab.result)}</span></div>
-        <div class="squares you"><span>you</span>${s.results[i].map((r) => square(r.you.points)).join('')}</div>
-        <div class="squares model"><span>model</span>${s.results[i].map((r) => square(r.model.points)).join('')}</div>
+        <div class="squares you"><span>you</span>${s.results[i].map((r) => square(r.you)).join('')}</div>
+        <div class="squares model"><span>model</span>${s.results[i].map((r) => square(r.model)).join('')}</div>
       </li>`,
     )
     .join('')
@@ -555,9 +766,9 @@ function renderDone(): string {
       <p class="eyebrow">${tag}</p>
       <h1>${won}</h1>
       <p class="score-line big">${scoreLine(t.you, t.model)}</p>
-      <p class="muted center small">out of ${t.perfect} possible, over ${t.pitches} pitches</p>
+      <p class="muted center small">you read ${t.youRead} of ${t.pitches} pitches, the model ${t.modelRead}. best run ${t.best} in a row</p>
       <ol class="recap">${rows}</ol>
-      <p class="legend"><span>${square(PERFECT)} pitch and spot</span><span>${square(2)} part right</span><span>${square(0)} missed</span></p>
+      <p class="legend"><span>${square({ pitch: true, way: true })} pitch and where</span><span>${square({ pitch: true, way: false })} one of them</span><span>${square({ pitch: false, way: false })} missed</span></p>
       ${state.mode === 'daily' ? shareButtons() : ''}
       <button class="primary" data-action="home">${state.mode === 'daily' ? 'back to the start' : 'play again'}</button>
     </section>`
@@ -574,7 +785,8 @@ function startGame(mode: 'daily' | 'practice'): void {
       : deal(state.data.atBats, AT_BATS_PER_GAME, mulberry32(Math.floor(Math.random() * 2 ** 31)))
   state.session = new Session(atBats)
   state.phase = 'calling'
-  state.pick = { pitch: favorite(state.session.atBat) }
+  state.pick = {}
+  state.readDone = false
   state.last = null
   render()
   window.scrollTo({ top: 0 })
@@ -586,19 +798,24 @@ function choosePitch(pitch: PitchCall): void {
   render()
 }
 
-function chooseZone(zone: Zone): void {
+function chooseWay(way: Way): void {
   if (state.phase !== 'calling') return
-  state.pick.zone = zone
+  state.pick.way = way
   render()
 }
 
 /** ready: the call is in, so he throws it. the result shows once the ball gets there */
 function lockIn(): void {
-  const { pitch, zone } = state.pick
-  if (state.phase !== 'calling' || !pitch || !zone) return
+  const { pitch, way } = state.pick
+  if (state.phase !== 'calling' || !pitch || !way) return
   const s = state.session!
   const ab = s.atBat
-  state.last = s.call({ pitch, zone })
+  // what he showed goes in your notebook with what it turned out to be
+  const id = String(ab.pitcher.id)
+  state.notes[id] = record(notesOn(ab), currentCues(), s.pitch.pitch)
+  saveNotebook(state.notes)
+  state.readDone = true
+  state.last = s.call({ pitch, way })
   if (!stage || stageBroken) {
     state.phase = 'reveal'
     render()
@@ -625,7 +842,8 @@ function next(): void {
     if (state.mode === 'daily') saveResult(todaysResult())
   } else {
     state.phase = 'calling'
-    state.pick = { pitch: favorite(s.atBat) }
+    state.pick = {}
+    state.readDone = false
   }
   render()
   window.scrollTo({ top: 0 })
@@ -679,14 +897,15 @@ app.addEventListener('click', (e) => {
   if (action === 'call') return lockIn()
   if (action === 'next') return next()
   if (action === 'replay') return stage?.replay()
+  if (action === 'watch') return watchAgain()
   const pitch = target.closest<HTMLElement>('[data-pitch]')?.dataset.pitch
   if (pitch) return choosePitch(pitch as PitchCall)
   // only the zone you're calling on takes clicks, the one on the reveal is a picture
-  const zone = target.closest<HTMLElement>('.interactive [data-zone]')?.dataset.zone
-  if (zone) return chooseZone(zone as Zone)
+  const way = target.closest<HTMLElement>('.interactive [data-way]')?.dataset.way
+  if (way) return chooseWay(way as Way)
 })
 
-// keys: letters for pitches (f s c l u h p), 1-9 for zones, arrows for a chase, enter to go
+// keys: letters for pitches (f s c l u h p), arrows for where, w to watch again, enter to go
 window.addEventListener('keydown', (e) => {
   if (!state || e.metaKey || e.ctrlKey || e.altKey) return
   const key = e.key.toLowerCase()
@@ -699,13 +918,13 @@ window.addEventListener('keydown', (e) => {
     return
   }
   if (key === 'r' && state.phase === 'reveal') return stage?.replay()
+  if (key === 'w' && state.phase === 'calling') return watchAgain()
   const pitch = PITCH_ORDER.find((c) => PITCHES[c].key === key)
   if (pitch) return choosePitch(pitch)
-  if (/^[1-9]$/.test(key)) return chooseZone(key as Zone)
-  const chase = ARROWS[e.key]
-  if (chase && state.phase === 'calling') {
+  const way = ARROWS[e.key]
+  if (way && state.phase === 'calling') {
     e.preventDefault()
-    return chooseZone(chase)
+    return chooseWay(way)
   }
 })
 

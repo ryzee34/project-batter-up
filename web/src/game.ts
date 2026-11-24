@@ -1,15 +1,18 @@
 // the rules, kept apart from the page so they can be tested on their own
 
-import type { AtBat, Pitch, PitchCall, Zone } from './types'
+import { bestWay, wayOdds, wayOf, type Way } from './tells'
+import type { AtBat, Pitch, PitchCall } from './types'
 
 export interface Guess {
   pitch: PitchCall
-  zone: Zone
+  way: Way
 }
 
 export interface Grade {
   pitch: boolean
-  zone: boolean
+  way: boolean
+  /** pitch types read right in a row, counting this one */
+  streak: number
   points: number
 }
 
@@ -19,20 +22,22 @@ export interface PitchResult {
   model: Grade
 }
 
-/** 2 for the pitch type, 1 for the zone, 1 more for both. 4 is a perfect call */
-export const POINTS = { pitch: 2, zone: 1, both: 1 } as const
-export const PERFECT = POINTS.pitch + POINTS.zone + POINTS.both
+/** 3 for the pitch type, 1 for the way it goes. the pitch is the read, the way is a bonus */
+export const POINTS = { pitch: 3, way: 1 } as const
+export const PERFECT = POINTS.pitch + POINTS.way
+/** read this many pitches in a row and every call after counts double, until you miss */
+export const HOT = 3
 
-export function grade(guess: Guess, truth: Pitch): Grade {
+export function grade(guess: Guess, truth: Pitch, streak = 0): Grade {
   const pitch = guess.pitch === truth.pitch
-  const zone = guess.zone === truth.zone
-  const points =
-    (pitch ? POINTS.pitch : 0) + (zone ? POINTS.zone : 0) + (pitch && zone ? POINTS.both : 0)
-  return { pitch, zone, points }
+  const way = guess.way === wayOf(truth.plate, truth.sz)
+  const run = pitch ? streak + 1 : 0
+  const base = (pitch ? POINTS.pitch : 0) + (way ? POINTS.way : 0)
+  return { pitch, way, streak: run, points: base * (run >= HOT ? 2 : 1) }
 }
 
 export function modelGuess(p: Pitch): Guess {
-  return { pitch: p.model.call[0], zone: p.model.call[1] }
+  return { pitch: p.model.call[0], way: bestWay(wayOdds(p.model.zone)) }
 }
 
 /** one sitting: a few at-bats, one pitch at a time, you and the model calling each */
@@ -74,10 +79,11 @@ export class Session {
     if (this.results[this.atBatIndex].length !== this.pitchIndex) {
       throw new Error('this pitch was already called')
     }
+    const last = this.results.flat().at(-1)
     const result = {
       pitch: this.pitch,
-      you: grade(guess, this.pitch),
-      model: grade(modelGuess(this.pitch), this.pitch),
+      you: grade(guess, this.pitch, last?.you.streak ?? 0),
+      model: grade(modelGuess(this.pitch), this.pitch, last?.model.streak ?? 0),
     }
     this.results[this.atBatIndex].push(result)
     return result
@@ -100,13 +106,22 @@ export class Session {
     return false
   }
 
-  totals(): { you: number; model: number; pitches: number; perfect: number } {
+  totals(): {
+    you: number
+    model: number
+    pitches: number
+    youRead: number
+    modelRead: number
+    best: number
+  } {
     const all = this.results.flat()
     return {
       you: sum(all.map((r) => r.you.points)),
       model: sum(all.map((r) => r.model.points)),
       pitches: all.length,
-      perfect: all.length * PERFECT,
+      youRead: all.filter((r) => r.you.pitch).length,
+      modelRead: all.filter((r) => r.model.pitch).length,
+      best: Math.max(0, ...all.map((r) => r.you.streak)),
     }
   }
 }
