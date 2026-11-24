@@ -105,3 +105,42 @@ function badges(m: Marks, way: Way): string {
   if (m.model === way) out.push('<i class="badge model">model</i>')
   return out.length ? `<span class="badges">${out.join('')}</span>` : ''
 }
+
+/** the zone for pitch recognition: tap anywhere in the frame for where it crossed */
+export function recZone(m: {
+  tap?: [number, number]
+  truth?: Pitch
+  stands: 'L' | 'R'
+  interactive: boolean
+}): string {
+  const inset = ((HALF_WIDTH - PLATE_HALF) / (2 * HALF_WIDTH)) * 100
+  const { left, right } = sides(m.stands)
+  const sz = m.truth?.sz
+  const at = (x: number, z: number) => {
+    // the same mapping as position(), for any point
+    const [bot, top] = sz ?? [1.6, 3.4]
+    const l = ((x + HALF_WIDTH) / (2 * HALF_WIDTH)) * 100
+    const h = ((z - bot) / (top - bot)) * 50 + 25
+    return { left: clamp(l, 2, 98), top: clamp(100 - h, 2, 98) }
+  }
+  let marks = ''
+  if (m.tap) {
+    const t = at(m.tap[0], m.tap[1])
+    marks += `<span class="dot tap" style="left:${t.left}%;top:${t.top}%"></span>`
+  }
+  if (m.truth) {
+    const p = position(m.truth)
+    marks += dot(m.truth, 'actual')
+    if (m.tap) {
+      const t = at(m.tap[0], m.tap[1])
+      marks += `<svg class="miss-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="${t.left}" y1="${t.top}" x2="${p.left}" y2="${p.top}"/></svg>`
+    }
+  }
+  return `
+    <div class="zone-frame rec-frame ${m.interactive ? 'interactive' : ''}" role="button"
+      aria-label="tap where the pitch crossed, catcher's view">
+      <span class="rec-side l">${left}</span><span class="rec-side r">${right}</span>
+      <div class="strike-zone empty" style="left:${inset}%;right:${inset}%"></div>
+      ${marks}
+    </div>`
+}

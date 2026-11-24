@@ -1,8 +1,10 @@
 # batter up
 
-read the pitcher and call the next pitch before it's thrown. you get dropped into a real dodgers at-bat with the count, the runners, the score and every pitch so far. the pitcher comes set and starts his motion, and it stops just before he lets go. what he showed you (where his glove sat, how high he kicked, how long he held, where his arm came from), his real scouting book and your own notes on him are what you call the pitch with. then you pick up, down, in or away and hit ready. he throws the real pitch in a 3d ballpark, on its real path, while a model trained on every pitch since 2023 makes its own call. then you see who read it, and a line from the booth tells you what just happened.
+see the start of a real pitch and call it. a real dodgers pitch leaves the pitcher's hand in a 3d ballpark, on the exact path statcast measured, and partway to the plate it vanishes. you pick the pitch and tap where you think it crossed. every three pitches it vanishes earlier, from 20 feet out to 44, which is less than a hitter gets. then the rest of the flight plays, you see how far off you were, and a link opens the real broadcast clip of that pitch on baseball savant.
 
-play it at **[ryzee34.github.io/project-batter-up](https://ryzee34.github.io/project-batter-up/)**. everyone gets the same three at-bats each day, with a spoiler free grid to share, and there's a practice mode with random ones.
+there's also the original mode, calling whole at-bats against a model before each pitch is thrown, reading the pitcher's delivery and his real scouting book.
+
+play it at **[ryzee34.github.io/project-batter-up](https://ryzee34.github.io/project-batter-up/)**. everyone gets the same 15 pitches each day, with a spoiler free grid to share, and there's a practice run with random ones.
 
 ## how its put together
 
@@ -39,6 +41,7 @@ uv run batter-up baseline   # how often "his favorite pitch" is right, the numbe
 uv run batter-up train      # trains the model on 2023-2025 and scores it on 2026 next to the baseline
 uv run batter-up export     # picks the at-bats and writes them with the model's calls to web/public/data
 uv run batter-up scout      # the scouting book on every pitcher in those at-bats, from the seasons before
+uv run batter-up clips      # finds savant's broadcast clip for every pitch in the game (run after export)
 uv run batter-up commentary # writes the prompt for the booth lines, then /booth in claude code writes them
 uv run pytest
 ```
@@ -71,7 +74,19 @@ it's trained on every season before the test season, with the last of those held
 
 `export` picks about 40 dodgers at-bats from the test season, so every call the model makes in the game is one it made blind. it favors at-bats that are fun to call (long, late, close, runners on, full counts, strikeouts and homers) and spreads them across pitchers and games. each pitch carries the count, what was thrown and where, the flight numbers to replay it, the model's odds for every pitch type and zone, its single call, and the baseline's call. the pitcher's scouting report is his mix in every game before that day. it all comes to about 130 KB of json.
 
+## pitch recognition
+
+this is the main game, and the skill in it is real. a slider and a fastball leave the hand on nearly the same line and only split apart on the way in, so the less of the flight you see, the harder it is. hitters have to commit somewhere around 20 to 25 feet out.
+
+`web/src/recognize.ts` has the rules, tested with vitest. a run is 15 real pitches from the game's at-bats, three at each of five levels. the ball disappears 20, 27, 33, 39 and then 44 feet from the plate. once it's gone you have 6 seconds to pick the pitch (from what that pitcher actually throws) and tap where it crossed. the right pitch is worth 10 and the tap up to 5: full marks within 0.3 feet (about a ball's width either way), sliding to nothing at 1.5 feet. both are multiplied by the level, so the last three pitches count five times the first three. the daily run is a seeded shuffle of the date, like the daily at-bats, and never gives you the same pitcher three times in a row.
+
+in the ballpark (`stage.ts`) the throw is the same one the at-bat mode plays, on the flight solved from statcast's nine numbers. the only change is that the ball hides and everything holds once the flight passes the level's distance, and the batter doesn't start his swing until you've called it, since that would give it away. after your call the rest of the flight plays, then again slowed down with its whole path drawn.
+
+the clips are baseball savant's. `batter-up clips` asks savant's game feed for each game in `atbats.json`, which lists every pitch with its at-bat number, pitch number and play id, and writes the play id onto each pitch. the game only links to savant's page for that pitch. no video is copied, stored or served from this site, because the footage belongs to mlb.
+
 ## reading the pitcher
+
+this is the at-bat mode.
 
 the first version of the game was mostly luck. you picked one of seven pitches and one of thirteen spots with nothing but his mix to go on, and real pitch choice is close to a coin flip: the model, with two million pitches behind it, gets the type right about 44% of the time. so now the game is about reading him, and what you can read is either real or honestly made up.
 
@@ -102,7 +117,7 @@ me 31 · model 27
 ryzee34.github.io/project-batter-up
 ```
 
-keyboard works too: f s c l u h p for the pitch, the arrow keys for where it goes, w to watch his delivery again, enter to call it.
+keyboard works too. in pitch recognition: f s c l u h p for the pitch, enter to call it and to move on, r to replay. in the at-bat mode: the same letters, the arrow keys for where it goes, w to watch his delivery again, enter to call it.
 
 ## the booth
 

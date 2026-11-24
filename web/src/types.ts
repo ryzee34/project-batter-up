@@ -30,6 +30,8 @@ export interface Pitch {
   flight: [number, number, number, number, number, number]
   model: { call: [PitchCall, Zone]; pitch: number[]; zone: number[] }
   baseline: [PitchCall, Zone]
+  /** savant's play id for the broadcast clip of this pitch, when batter-up clips found it */
+  clip?: string
 }
 
 export interface AtBat {

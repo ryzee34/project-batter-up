@@ -174,6 +174,27 @@ def cmd_scout(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_clips(args: argparse.Namespace) -> int:
+    import json
+
+    import httpx
+
+    from batter_up.clips import add_clips
+
+    path = paths.WEB_DATA / "atbats.json"
+    if not path.exists():
+        raise SystemExit("no at-bats yet, run batter-up export first")
+    payload = json.loads(path.read_text())
+    with httpx.Client(
+        timeout=60, follow_redirects=True, headers={"User-Agent": "batter-up (personal project)"}
+    ) as client:
+        found = add_clips(payload, client)
+    path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    pitches = sum(len(ab["pitches"]) for ab in payload["atBats"])
+    print(f"found the savant clip for {found} of {pitches} pitches -> {path.name}")
+    return 0
+
+
 def cmd_commentary(args: argparse.Namespace) -> int:
     import json
 
@@ -265,6 +286,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     book = sub.add_parser("scout", help="write the scouting book on every pitcher in the game")
     book.set_defaults(func=cmd_scout)
+
+    clips = sub.add_parser("clips", help="link every pitch in the game to its savant clip")
+    clips.set_defaults(func=cmd_clips)
 
     talk = sub.add_parser("commentary", help="get claude to write booth lines for every pitch")
     talk.add_argument("--check", action="store_true", help="check commentary.json covers it all")

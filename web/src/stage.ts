@@ -49,7 +49,7 @@ export interface Rect {
 }
 
 /** idle on the mound, reading (the delivery up to the freeze, then held), throwing */
-type Mode = 'idle' | 'reading' | 'throwing' | 'done'
+type Mode = 'idle' | 'reading' | 'throwing' | 'gone' | 'done'
 
 export class Stage {
   readonly canvas: HTMLCanvasElement
@@ -66,6 +66,10 @@ export class Stage {
   /** seconds he holds the set before he starts his motion */
   private hold = 0.5
   private onRead: (() => void) | null = null
+  /** pitch recognition: the flight time the ball disappears at, and what to call then */
+  private goneT: number | null = null
+  private onGone: (() => void) | null = null
+  private goneS = 0
   private ball: THREE.Mesh
   private trail: THREE.Line
   private pitcher: Player
@@ -403,13 +407,22 @@ export class Stage {
 
   /** the pitch: windup, then the real flight at full speed. `landed` fires when it
    * reaches the plate, then it plays again slowed down with its path traced */
-  throw(p: Pitch, throws: 'L' | 'R', stands: 'L' | 'R', landed: () => void): void {
+  throw(
+    p: Pitch,
+    throws: 'L' | 'R',
+    stands: 'L' | 'R',
+    landed: () => void,
+    gone?: { at: number; then: () => void },
+  ): void {
     const fromRead = this.mode === 'reading' && this.pitch === p
     this.onRead = null
+    this.goneT = null
+    this.onGone = gone?.then ?? null
     this.setPlayers(throws, stands)
     this.setZone(p.sz)
     this.pitch = p
     this.flight = flight(p)
+    if (gone) this.goneT = this.flight.when(gone.at + FRONT_OF_PLATE)
     this.swings = /swing|foul|hit_into_play|bunt/.test(p.result)
     this.onLanded = landed
     ;(this.trail.material as THREE.LineBasicMaterial).color.set(PITCHES[p.pitch].color)
@@ -424,8 +437,18 @@ export class Stage {
     }
   }
 
+  /** pitch recognition: the call is in, so show the rest of the flight from where it vanished */
+  finish(landed: () => void): void {
+    if (this.mode !== 'gone') return
+    this.goneT = null
+    this.onLanded = landed
+    this.mode = 'throwing'
+    this.started = performance.now() - this.goneS * 1000
+  }
+
   /** watch it again from the set */
   replay(): void {
+    if (this.mode === 'gone') return
     if (!this.pitch) return
     this.onLanded = null
     if (this.mode === 'reading') {
@@ -476,7 +499,7 @@ export class Stage {
       setPose(this.batter, stance(), Math.sin(t * 2.3) * 0.06)
     } else if (this.mode === 'reading') {
       this.reading((now - this.started) / 1000, now / 1000)
-    } else if (this.flight) {
+    } else if (this.flight && this.mode !== 'gone') {
       this.animate((now - this.started) / 1000)
     }
     void dt
@@ -533,7 +556,10 @@ export class Stage {
     const swingStart = tl.land - 0.22
     setPose(
       this.batter,
-      this.swings && s > swingStart ? swing(Math.min(1, (s - swingStart) / 0.35)) : stance(),
+      // in pitch recognition he holds until you've called it, a swing would give it away
+      this.swings && this.goneT === null && s > swingStart
+        ? swing(Math.min(1, (s - swingStart) / 0.35))
+        : stance(),
     )
 
     let t: number | null = null
@@ -557,6 +583,16 @@ export class Stage {
       const done = this.onLanded
       this.onLanded = null
       done()
+    }
+    // pitch recognition: past the point it disappears, everything holds until you call it
+    if (this.goneT !== null && t !== null && t >= this.goneT) {
+      this.ball.visible = false
+      this.mode = 'gone'
+      this.goneS = s
+      const then = this.onGone
+      this.onGone = null
+      then?.()
+      return
     }
     this.ball.visible = t !== null
     if (t !== null) {

@@ -15,6 +15,8 @@ export interface Flight {
   /** time the ball crosses the front of the plate */
   plate: number
   at(t: number): [number, number, number]
+  /** the time the ball is `y` feet from the back of the plate */
+  when(y: number): number
 }
 
 /** the times y(t) hits `y`, earliest first */
@@ -40,6 +42,9 @@ export function flight(p: Pitch): Flight {
   return {
     release,
     plate,
+    when(y) {
+      return timesAt(y, vy0, ay)[0]
+    },
     at(t) {
       return [
         x0 + vx0 * t + (ax * t * t) / 2,
